@@ -1,0 +1,866 @@
+# 架构决策记录
+
+## 〇、跨端共享协议（最高优先级）
+
+### 0.1 枚举（Enum）协议
+
+枚举是项目**可读性、可维护性、数据一致性的根基**。**所有 agent 开发前必读 `.claude/skills/enum-bidirectional/SKILL.md`。**
+
+#### 两端 enum 源
+
+| 端                            | enum 源                                   | 引用方式                                              |
+| ----------------------------- | ----------------------------------------- | ----------------------------------------------------- |
+| **weapp / admin / service**   | `packages/interface/src/enum/sql.enum.ts` | `import { ... } from "@whzhuke/interface"`            |
+| **app (Flutter)**             | 自行声明 `app/lib/common/enum/*.dart`     | 与 `packages/interface/src/enum/sql.enum.ts` 一一对应 |
+
+weapp 通过 pnpm workspace 引用 `@whzhuke/interface`,源码由 Taro webpack 链直接编译(weapp/config/index.ts 的 `webpackChain` 把 `packages/interface/src` 加入 script rule 的 include)。**不再存在 weapp 副本**。
+
+#### weapp 引用其它 packages 的约定(@whzhuke/common 等)
+
+weapp 已可引用 `@whzhuke/common` 等 packages,直接走 namespace 或具名 import 都行 — 所有 `packages/*/package.json` 都声明了 `"sideEffects": false`,webpack 会自动 tree-shake,不会把没用到的模块(eventEmitter / file / localStorage / request / function/browser 等浏览器专用)拉进 Taro 包:
+
+```ts
+import { arrayCommon, functionCommon } from "@whzhuke/common"
+arrayCommon.doAlone(...)
+functionCommon.areaToArray(...)
+```
+
+新增引用 packages 时,`weapp/config/index.ts` 的 `webpackChain` 要把对应的 `packages/{pkg}/src` 加进 script rule include,让 Taro babel 链编译这些源码 TS。
+
+⚠️ 如果未来新加的 packages 里某个模块**真的有顶层副作用**(类似旧版 EventBus 的 `window.eventList = ...`),要么把那个副作用收到函数内/加 `typeof window` 守卫,要么改 `package.json` 的 `sideEffects` 字段为一个数组列出有副作用的具体文件,否则会被 tree-shake 误删。
+
+#### 设计原则
+
+1. **TS 端 enum 必须是双向的**（字符串 enum 天然支持反向映射）
+2. **禁止**自己写 `Record<string, string>` map 重复 enum 数据
+3. **禁止**硬编码 enum 字符串字面量（如 `z.enum(["SELL", "RENT", "TEMP"])` ❌）
+4. **后端新增 enum 必须同步**:packages/interface/src/enum/sql.enum.ts(TS 三端共享) + app/lib/common/enum/*.dart(Dart 端)
+
+#### 同步流程
+
+```
+修改 packages/interface/src/enum/sql.enum.ts
+  ↓
+admin / service / weapp 通过 @whzhuke/interface 自动获得新 enum(无需手动复制)
+  ↓
+如 app 端用到,同步更新 app/lib/common/enum/{module}_enum.dart
+```
+
+**责任分配**：TS 端由 `@architect` agent 在设计 Prisma Schema 时直接修改 `packages/interface/src/enum/sql.enum.ts` 即可;Dart 端同步由 architect 一次性完成。
+
+#### 详细规范
+
+完整规则（含 Dart 实现、新增 enum 流程、反模式清单）见 `.claude/skills/enum-bidirectional/SKILL.md`。
+
+---
+
+## 一、Service 项目
+
+### 1.1 模块组织
+
+#### 按客户端分离
+
+```
+modules/
+├── admin/    # 管理后台 API
+├── app/      # C端 App API
+├── base/     # 多端共享 API（短信、用户、系统等）
+└── wx/       # C端 微信小程序 API
+```
+
+**为什么**：一个后端服务可能同时服务多个客户端，按客户端分离可以：
+
+- 独立管理不同客户端的 API 路径和权限
+- 便于定位代码（按客户端找）
+- 不同客户端的 API 可以独立演进
+
+#### 模块内三件套模式
+
+```
+admin/land/
+├── admin.land.controller.ts  # 业务逻辑
+├── admin.land.params.ts      # Zod 参数校验
+└── admin.land.router.ts      # 路由配置
+```
+
+**为什么**：
+
+- **关注点分离**：逻辑、校验、路由是不同维度的变化因素
+- **强制一致**：新模块必须按此模式创建，降低认知负担
+- **便于自动化**：工具可以基于模板生成三件套
+
+---
+
+### 1.2 服务层设计
+
+#### Service 当前状态：Model 代理
+
+```typescript
+// base.service.ts
+export default class<M> {
+  public model: M
+  constructor(model: M) {
+    this.model = model
+  }
+}
+
+// land.service.ts
+export default new (class extends baseService<Prisma.LandDelegate> {
+  constructor() {
+    super(prismaService.land)
+  }
+})()
+```
+
+**为什么**：
+
+- Service 层**不封装业务逻辑**，只代理 Prisma Model
+- 业务逻辑放在 Controller，让 Controller 可以直接操作 Model
+- 保持 Service 的通用性，任何模块都能复用这套模式
+
+#### Service 演进方向
+
+```
+当前阶段：纯 model 代理
+    ↓
+随着项目规模变大、某些操作变常用
+    ↓
+封装常用操作到 Service 类方法中
+```
+
+**演进模式示例**：
+
+```typescript
+// 演进前 - Controller 直接操作 model
+const total = await landService.model.count({ where: { ... } })
+
+// 演进后 - 常用操作封装到 Service
+const { total, rows } = await landService.listWithCount({ where: { ... } })
+```
+
+**原则**：
+
+- 不要「提前封装」，等某些调用模式出现 3+ 次再抽象
+- 封装的是「常用操作」而非「业务逻辑」
+- Controller 依然可以直连 model，保持灵活性
+
+#### Controller 直连 Model
+
+```typescript
+// admin.land.controller.ts
+add = async (ctx: Context) => {
+  const params = ctx.params as ServiceApi.Admin.Land.ADD.Params
+  const { id } = await landService.model.create({ data: params })
+  return id
+}
+```
+
+**为什么**：
+
+- 减少一层间接调用
+- 业务逻辑都在 Controller 内，便于追踪和调试
+- 简单的 CRUD 不需要额外的 Service 封装
+
+---
+
+### 1.6 数据库操作规范
+
+#### 软删除规范
+
+| 情况                    | 处理方式                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Model 有 `deleted` 字段 | 软删除 `updateMany({ where: { id: { in: ids } }, data: { deleted: true } })` |
+| Model 无 `deleted` 字段 | 硬删除 `deleteMany({ where: { id: { in: ids } } })`                          |
+
+**判断方法**：检查 Prisma schema 中是否有 `deleted` 字段。
+
+#### 空数组处理
+
+```typescript
+// Prisma 的 hasEvery 操作符不能是 undefined，必须配合 ?? []
+listingType: {
+  hasEvery: listingType ?? []
+}
+```
+
+#### undefined vs null 行为差异
+
+| 值          | Prisma 行为               |
+| ----------- | ------------------------- |
+| `undefined` | 被忽略，不加入 where 条件 |
+| `null`      | 会添加到 where 条件       |
+
+```typescript
+// ✅ 正确：只处理 null/undefined
+username: {
+  contains: username ?? undefined
+}
+
+// ✅ 也正确：条件不存在时整条不添加
+title: title ? { contains: title } : undefined
+```
+
+#### ?? vs || 选择
+
+| 场景                   | 用 `??` | 用 ` |     | `   |
+| ---------------------- | ------- | ---- | --- | --- |
+| 数字字段（0 是有效值） | ✅      | ❌   |
+| 字符串/ID 字段         | ✅      | ✅   |
+
+```typescript
+// ✅ 数字用 ??（price = 0 时不应该被过滤）
+price: price ?? undefined
+
+// ✅ 字符串用 ||
+username: username || undefined
+```
+
+#### 关联查询模式
+
+```typescript
+// include：加载关联表所有字段
+include: { packageGoods: true }
+
+// select：只加载指定字段（减少传输）
+include: {
+  packageGoods: {
+    include: { goods: { select: { title: true, price: true } } }
+  }
+}
+```
+
+---
+
+### 1.7 错误处理规范
+
+#### 业务异常工具:throwBiz / assertBiz
+
+来源 `common/utils/exception.util.ts`,两个函数**名字即语义**,二选一即可:
+
+```typescript
+// 1) 无条件抛出业务异常(带 ServiceCode 错误码)
+//    通常配合自己的 if 守卫使用
+if (exists) throwBiz(ServiceCode.已存在, "资源已存在")
+
+// 2) 断言条件成立,不成立才抛(作守卫用;asserts 谓词会收窄类型)
+assertBiz(user, ServiceCode.不存在, "用户不存在")
+// 此后 user 被 TS 收窄为非空,无需 user!
+```
+
+> 历史说明:旧的 `Assert(useError, code, message)` 因「第一参为 `false` 才抛」的反直觉语义已被移除,全部替换为上述两个自解释函数(`Assert(false, code, msg)` → `throwBiz(code, msg)`)。
+
+| 特性         | throwBiz / assertBiz | throw new Error |
+| ------------ | -------------------- | --------------- |
+| 错误码       | ✅                   | ❌              |
+| 业务语义     | ✅                   | ❌              |
+| 前端区分处理 | ✅                   | ❌              |
+
+**使用场景**：业务校验、存在性检查、权限验证等。
+
+---
+
+### 1.8 日期时间处理规范
+
+| 操作      | 方式                               |
+| --------- | ---------------------------------- |
+| 存储到 DB | `new Date().toISOString()` (UTC)   |
+| 范围查询  | `new Date(dateString)` (Date 对象) |
+
+```typescript
+// 范围查询示例
+ctime: {
+  gte: start ? new Date(start) : undefined,
+  lte: end ? new Date(end) : undefined
+}
+```
+
+---
+
+### 1.9 批量操作选择
+
+| 场景            | 方法                   | 原因                 |
+| --------------- | ---------------------- | -------------------- |
+| 关联表批量插入  | `createMany`           | 一次 DB 交互，更高效 |
+| 需要返回每条 ID | `Promise.all + create` | 可获取返回 ID        |
+| 批量插入日志    | `createMany`           | 结构相同，效率优先   |
+
+---
+
+### 1.10 分页返回结构
+
+```typescript
+return { rows, count: rows.length, total }
+```
+
+| 字段  | 来源         | 含义                   |
+| ----- | ------------ | ---------------------- |
+| rows  | findMany     | 当前页数据             |
+| count | rows.length  | 当前页实际数量         |
+| total | count() 查询 | 符合条件的所有记录总数 |
+
+**场景**：假设有 100 条数据，take=20, skip=0，则 total=100, rows=20条, count=20。
+
+---
+
+### 1.11 状态变更日志模式
+
+当状态变更需要记录历史时，使用 beforeStatus/afterStatus 模式：
+
+```typescript
+await appointmentLogService.model.create({
+  data: {
+    appointmentId: id,
+    operateUserId: userId,
+    action: "修改状态",
+    beforeStatus: appointment!.status, // 变更前的状态
+    afterStatus: status, // 变更后的状态
+    remark
+  }
+})
+```
+
+---
+
+### 1.3 API 设计规范
+
+#### 统一使用 RPC 风格
+
+所有 API 统一使用 RPC 风格（路径 + 操作名），不采用 RESTful 的资源路径形式。
+
+| 端        | 方法选择   | 说明                        |
+| --------- | ---------- | --------------------------- |
+| Admin     | 统一 POST  | 所有操作都用 body 传参      |
+| App/Weapp | 按场景选择 | 需要分享用 GET，否则用 POST |
+
+| 场景       | 方法 | 路径示例         | 参数传递             |
+| ---------- | ---- | ---------------- | -------------------- |
+| 需要分享   | GET  | `/resource/item` | Query 参数 `?id=xxx` |
+| 不需要分享 | POST | `/resource/item` | Body 参数            |
+
+**为什么**：
+
+- 风格统一，降低认知负担
+- 参数位置明确，便于追踪调试
+- 适用于内部接口和需要分享的接口
+
+#### 分页参数规范
+
+所有列表接口统一使用 `take`/`skip` 分页，禁止使用 `page`/`pageSize`。
+
+| 参数 | 类型   | 说明               |
+| ---- | ------ | ------------------ |
+| take | number | 取多少条，默认 20  |
+| skip | number | 跳过多少条，默认 0 |
+
+**为什么**：
+
+- Prisma 原生支持 `take`/`skip`，无需转换
+- schema 中 `pageParams` 统一使用 `take`/`skip`
+- 文档与 schema 必须保持一致
+
+**示例**：
+
+```typescript
+// 获取单个资源（可能需要分享）
+GET /news/item?id=xxx
+
+// 获取列表
+POST /news/list
+{ "take": 20, "skip": 0 }
+
+// 增删改
+POST /news/add
+POST /news/edit
+POST /news/del
+```
+
+---
+
+### 1.4 中间件设计
+
+> 运行时为 **Fastify**。业务中间件(realIp/user/auth/permission)以 koa 风格 `(ctx, next)` 编写,
+> 由 `src/fastify/compose.ts` 串联,ctx 由 `register.ts` 的 makeCtx 构造(类型见 `interfaces/context.interface.ts`)。
+> cors / body / multipart / 静态 / 安全头(helmet) / 限流 / 健康检查 均为 Fastify 插件,集中在 `fastify/globals.ts`。
+
+#### 中间件工厂模式
+
+```typescript
+// auth.middleware.ts
+export default function (loadInfo = false): Middleware {
+  return async (ctx, next) => {
+    if (!ctx.userId) throwBiz(ServiceCode.未登录, "...") // 失败抛业务异常,冒泡到 setErrorHandler
+    await next()
+  }
+}
+```
+
+**为什么**:同一 Middleware 可按参数配置不同行为、路由按需配置;失败统一 `throwBiz` 抛出。
+
+#### 校验 / 错误 / 响应封套(Fastify 原生管线)
+
+- **参数校验**:Zod schema 挂在路由 `schema.body`(POST)/`schema.querystring`(GET),由全局 `validatorCompiler`(Zod `safeParse`)校验;上传(multipart)路由不挂 schema,在 handler 内手动 Zod 校验。
+- **错误处理**:`app.setErrorHandler` 把业务异常(`throwBiz`/`Exception`)、校验失败、其它,统一成 `{ code, message }` 信封 + **HTTP 200**。
+- **成功封套**:在 `registerRouters` 的 handler 内组装 `{ code: 成功, data }`(`isAlone` 裸返回)并经 `serializeDecimal` 处理。
+
+**为什么**:响应格式统一、业务代码不写 try-catch、校验与错误进入 Fastify 原生管线。
+
+---
+
+### 1.5 工具类设计
+
+#### 工具类特征
+
+| 特征               | 说明                                   |
+| ------------------ | -------------------------------------- |
+| 单例模式           | `export default new (class { ... })()` |
+| 不依赖 ctx         | 能在命令行/脚本/测试中独立运行         |
+| 纯函数或接近纯函数 | 输入输出明确，无隐式依赖               |
+
+#### 工具类示例
+
+```typescript
+// env.util.ts - 环境变量
+export default new (class {
+  public get(name: string, _default: string = "") { ... }
+  public getNumber(name: string, _default: number = 0) { ... }
+})()
+
+// redis.util.ts - Redis 连接单例
+export default redis
+
+// sms.util.ts - 短信验证码
+export default new (class {
+  readonly CODE_PREFIX = "app:sms_code:"
+  readonly COOLDOWN = 60
+  async generateCode(phone: string) { ... }
+})()
+
+// jwt.util.ts - Token 操作
+export default {
+  async sign(payload) { ... },        // 签发 Token（支持多设备管理）
+  async verify(token) { ... },        // 验证 Token（检查黑名单和用户设备）
+  async invalidate(token, uid) { ... }, // 作废 Token
+  async getDeviceCount(uid) { ... },   // 获取用户设备数
+  async getUserTokens(uid) { ... },    // 获取用户所有 Token
+  async incLoginFail(username) { ... }, // 登录失败计数
+  async isLocked(username) { ... },   // 检查账号是否被锁定
+  async cleanFail(username) { ... }   // 清除登录失败计数
+}
+```
+
+#### 中间件 vs 工具类判断
+
+```
+问题1: 需要 ctx/next 吗？
+  → 否 → 工具类
+  → 是 → 问题2
+
+问题2: 需要按路由配置吗？
+  → 是 → 中间件
+  → 否 → 可以包装成中间件，但本质是工具调用
+```
+
+---
+
+## 二、Admin 前端项目
+
+### 2.1 组件选型规范
+
+| 场景          | 组件          | 说明                               |
+| ------------- | ------------- | ---------------------------------- |
+| 表格列表      | ListTable     | 所有表格类组件使用 ListTable       |
+| 编辑/新增表单 | FormRender    | 所有表单组件使用 FormRender        |
+| 搜索筛选      | FormGuiRender | 所有搜索筛选组件使用 FormGuiRender |
+
+**禁止使用**：antd 原生的 `<Form>` 和 `<Table>` 组件
+
+**为什么**：
+
+- 统一封装层，便于维护和升级
+- 配置化开发，提升效率
+- 减少业务代码与 UI 库的耦合
+
+### 2.2 前端组织
+
+#### 按实体组织
+
+```
+components/form/land/edit.land.tsx   # 编辑表单
+services/admin.land.service.ts       # API 调用封装
+pages/home/land/land.tsx            # 列表页面
+```
+
+**为什么**：
+
+- 按业务实体组织，便于定位代码
+- 同一个实体的表单、列表、API 封装放一起
+
+### 2.3 fieldList 配置模式
+
+```typescript
+fieldList={[
+  values ? Field_ID : undefined,  // 编辑时显示 ID
+  { fieldType: "input", formItemConfig: { name, label }, config: {} },
+  Field_FormSave  // 固定最后一项
+]}
+```
+
+**为什么**：
+
+- JSON-like 配置比 JSX 更易于复用和生成
+- 统一字段渲染逻辑
+- 便于工具自动化生成表单
+
+---
+
+## 三、跨端共享
+
+### 3.1 类型共享
+
+#### Zod Schema 作为单一真相源
+
+```typescript
+// admin.land.params.ts
+export const adminLandAddParams = z.object({...})
+export const adminLandEditParams = z.object({
+  ...cuidParams.shape,
+  ...adminLandAddParams.shape
+})
+```
+
+**为什么**：
+
+- Zod schema **既是运行时校验，又是类型定义**
+- 生成的类型 `ServiceApi.Admin.Land.ADD.Params` 前后端共享
+- 通过 `.shape` 继承实现 DRY
+
+---
+
+### 3.2 代码组织思维链
+
+#### 工具函数目录归属
+
+| 范围       | 放入位置                    | 示例                      |
+| ---------- | --------------------------- | ------------------------- |
+| 某个端专用 | 该端的 utils/ 目录          | service/src/common/utils/ |
+| admin 专用 | admin/src/components/utils/ |                           |
+| 跨端通用   | packages/common/            | debounce、request、host   |
+
+**判断原则**：先放局部，能复用再提升到 common
+
+#### 工具函数命名规范
+
+**命名规范**：参考同目录已有工具的命名风格
+
+```typescript
+// 例如 service/src/common/utils/ 下已有：
+// - cache.util.ts
+// - jwt.util.ts
+// - redis.util.ts
+
+// 新增工具函数遵循同样的模式：
+// - xxx.util.ts
+// - 动词 + .util.ts（如 upload.util.ts）
+```
+
+#### 包按「技术能力」划分
+
+```
+packages/
+├── common/      # 纯工具函数，无业务属性
+├── interface/   # 类型定义 + 枚举常量
+├── usehook/    # React Hooks 封装
+├── antd/       # UI 组件库封装
+├── components/ # 业务无关的通用组件
+└── aliyun/     # 第三方服务（OSS）
+```
+
+**思考**：
+
+- 按「技术能力」而非「业务域」划分包边界
+- 确保包职责单一、可独立发布
+- 使用者可以 `import { debounce } from "@whzhuke/common"` 即可
+
+#### 工具函数「最小粒度」原则
+
+```typescript
+// common/function/debounce.ts
+export function debounce(func: Function, wait = 166, first = !0) {
+  // 单一职责：只做防抖
+  // 暴露 clear() 方法让调用方可以主动取消
+}
+```
+
+**思考**：
+
+- 每个函数文件 **只导出一个函数**（或同系列的一组函数）
+- 函数名即功能，**无需文档即能理解**
+- 附带 `clear()` 等扩展方法增加可控性
+
+#### 抽象时机判断
+
+```
+第一次遇到 → 先写（即使有点丑）
+第二次遇到 → 考虑抽象（犹豫就先放着）
+第三次遇到 → 必须抽象（不再犹豫）
+```
+
+**识别信号**：
+| 信号 | 说明 |
+|------|------|
+| 同样的 try-catch + throw Exception 出现 2+ 次 | 抽象成 checkExist() |
+| 同样的数据转换出现 2+ 次 | 抽象成 formatXxx() |
+| import 同一个外部依赖多次 | 检查是否能封装 |
+| 发现自己在 controller 里写第三遍同样的代码 | 抽象成工具函数 |
+
+**不能抽象的信号**：
+| 信号 | 说明 |
+|------|------|
+| 依赖 ctx | 需要知道当前请求信息 |
+| 业务强耦合 | 改了会影响核心业务逻辑 |
+| 只用一次 | 抽象反而增加复杂度 |
+| 状态相关 | 依赖运行时环境判断 |
+
+#### 工具类 vs 中间件 判断框架
+
+```
+能回答「它能在 console 里单独跑吗？」
+  → 能 → 工具类
+
+会问「这个函数执行时需要知道自己在哪个 API 里吗？」
+  → 需要 → 中间件
+  → 不需要 → 工具类
+```
+
+**灵魂拷问**：
+
+| 问题                     | 答案倾向    | 说明                      |
+| ------------------------ | ----------- | ------------------------- |
+| 需要 ctx/next 吗？       | 否 → 工具类 | 工具类不感知请求上下文    |
+| 是请求管道的一部分吗？   | 是 → 中间件 | auth、permission、logging |
+| 能在非请求上下文使用吗？ | 能 → 工具类 | 如脚本、命令行、测试      |
+| 需要按路由配置吗？       | 是 → 中间件 | factory 模式              |
+
+**示例**：
+
+| 函数              | 为什么是工具类/中间件                                       |
+| ----------------- | ----------------------------------------------------------- |
+| jwtUtil.sign()    | 工具类 - 不需要 ctx，调用者传 payload 就行                  |
+| auth.middleware   | 中间件 - 需要 ctx 读取 userId，需要 next 调用管道           |
+| logger.middleware | 中间件（包装）- 需要 ctx 获取 path/userId，但本质是工具调用 |
+
+---
+
+## 四、Weapp 项目
+
+### 4.1 技术栈
+
+| 技术   | 说明           |
+| ------ | -------------- |
+| Taro   | 跨端小程序框架 |
+| MobX   | 状态管理       |
+| UnoCSS | 原子化 CSS     |
+
+### 4.2 项目结构
+
+```
+weapp/
+├── config/           # 环境配置
+├── src/
+│   ├── common/       # 公共工具（request、storage、navigate）
+│   ├── components/   # 业务组件
+│   ├── interface/    # 类型定义
+│   ├── pages/        # 页面
+│   ├── services/     # API 服务层
+│   ├── store/        # MobX 状态管理
+│   └── app.config.ts # 应用配置
+└── types/            # 全局类型声明
+```
+
+### 4.3 Service 层设计
+
+#### 命名规范
+
+```
+services/
+├── wx.land.service.ts      # 房源相关 API
+├── wx.user.service.ts      # 用户相关 API
+├── wx.auth.service.ts      # 认证相关 API
+└── base.system.service.ts  # 系统基础 API
+```
+
+**为什么**：按业务域命名，与 Taro 生态的 `wx.*` 命名空间保持一致
+
+#### Service 文件模式
+
+```typescript
+// wx.land.service.ts
+import { postJson } from "@/common/request.common"
+
+export default {
+  list: (data: ServiceApi.WX.Land.LIST.Params) => {
+    return postJson<ServiceApi.WX.Land.LIST.Res>({
+      url: `/wx/land/list`,
+      data
+    })
+  },
+  item: (data: ServiceApi.WX.Land.ITEM.Params) => {
+    return postJson<ServiceApi.WX.Land.ITEM.Res>({
+      url: `/wx/land/item`,
+      data
+    })
+  }
+}
+```
+
+**为什么**：
+
+- 强类型约束：参数和返回值都有完整类型
+- 类型来自 `ServiceApi.WX.*` 命名空间（由 Service 层生成）
+
+### 4.4 请求封装模式
+
+```typescript
+// request.common.ts
+export const request = {
+  api: (options) => { /* 带 token 的业务 API */ },
+  public: (options) => { /* 公开 API，无需 token */ },
+  cdn: (options) => { /* CDN 资源 */ },
+  upload: (options) => { /* 文件上传 */ }
+}
+
+// 快捷方法
+export const post = async (options) => { ... }      // form-urlencoded
+export const postJson = async (options) => { ... }  // JSON
+export const get = async (options) => { ... }
+export const getCDN = async (options) => { ... }
+export const uploadFile = async (options) => { ... }
+```
+
+**为什么**：
+
+- **三层分离**：`api`（业务）、`public`（公开）、`cdn`（静态资源）
+- `setHeader` / `setRes` 钩子：统一注入 token、处理响应
+- 快捷方法覆盖 95% 的场景
+
+### 4.5 Store 设计
+
+#### MobX Store 模式
+
+```typescript
+// store/site.store.ts
+export class SiteStore {
+  constructor() {
+    makeAutoObservable(this, { windowInfo: false, deviceInfo: false })
+  }
+  user: ServiceApi.WX.Auth.LOGIN.Res["data"] | undefined =
+    lsCommon.getItem("user")
+  setUser(user: SiteStore["user"]) {
+    this.user = user
+    if (user) {
+      lsCommon.setItem("token", user.token)
+      lsCommon.setItem("user", user)
+    }
+  }
+}
+```
+
+**为什么**：
+
+- `makeAutoObservable` 自动处理响应式
+- **状态与持久化分离**：user 存 memory，token 同步写 storage
+- getter 方法替代计算属性（如 `windowPadding`）
+- setter 方法统一状态变更入口
+
+#### Store 组织
+
+| Store      | 职责                               |
+| ---------- | ---------------------------------- |
+| SiteStore  | 用户信息、Tab 状态、收藏夹         |
+| WeAppStore | 小程序特有状态（位置、相机、滚动） |
+
+### 4.6 本地存储封装
+
+```typescript
+// ls.common.ts
+export default {
+  getItem<T extends keyof localStorageData.data>(key: T, normal?: T): T | undefined,
+  setItem<T extends keyof localStorageData.data>(key: T, value: T),
+  removeItem(key: T),
+  clearItem()
+}
+```
+
+**为什么**：
+
+- **类型安全**：泛型约束 key必须是 `localStorageData.data` 的键
+- **统一封装**：屏蔽 Taro API 差异
+- **默认值支持**：`getItem(key, defaultValue)` 提供 fallback
+
+---
+
+## 五、App 项目（Flutter）
+
+> C 端 App 架构决策（2026-06 定稿）。基于项目 PRD/flow 需求 + 当前官方推荐栈。
+>
+> **技术栈：Riverpod（codegen）+ go_router 的 feature-first 分层架构；dio Repository 数据层；json_serializable 模型（不可变 class + 手写 copyWith）；Dart 增强枚举对齐 `packages/interface`。**
+>
+> （注：freezed 与 `riverpod_generator 4` 的 source_gen 版本冲突，本项目改用 json_serializable，不引入 freezed。）
+>
+> **明确不使用 GetX**：路由用 go_router，DI/状态用 Riverpod。
+> **反馈/加载类 UI 1:1 还原 HTML 原型**（决策 2026-06-22，原型是 UI 真相）：用自定义公共组件 `app/lib/core/widgets/bang_feedback.dart`（`BangToast` / `bangConfirmDialog` 居中白卡 / `BangLoadingOverlay` + `BangSyncSpinner`(antd-sync)），**禁用** Flutter 原生 `SnackBar` / `AlertDialog` / `CircularProgressIndicator`。**例外：下拉刷新用 Flutter 原生 `RefreshIndicator`**（不用 antd-sync 自定义）。
+
+### 5.1 分层与目录（feature-first，UI / Data 两层）
+
+```
+lib/
+├── core/                 # 跨功能基建
+│   ├── network/          # dio client + 拦截器(token 注入 / ServiceCode 解包 / 错误→Exception)
+│   ├── router/           # go_router 配置 + redirect 守卫 + 路由表
+│   ├── config/           # env(local/dev/prod)
+│   ├── storage/          # flutter_secure_storage(token) 封装
+│   └── theme/            # ThemeData / 设计 token
+├── common/               # 枚举 enum/(对齐 packages/interface,§0.1) + 共享 utils/(image_url 含 OSS resize、date)
+├── features/<模块>/      # land / goods / order / trade / contract / verification / ...
+│   ├── data/             # repository + model(json_serializable) + dto
+│   └── presentation/     # view(page/widget) + viewmodel(Riverpod Notifier/AsyncNotifier)
+└── main.dart             # ProviderScope + MaterialApp.router
+```
+
+### 5.2 选型与理由
+
+| 关注点 | 选型 | 为什么（文档依据） |
+| --- | --- | --- |
+| 状态 + DI | **Riverpod + `@riverpod` codegen** | 列表分页 / 详情 / 支付轮询是异步态 → `AsyncNotifier` + `AsyncValue` 天然处理 loading/error/data；编译期安全、可测 |
+| 路由 | **go_router** | land/news/lodging **详情是 GET `?id=` 可分享**（api 契约明确）→ 必须深链；微信支付回跳、`payment-result`、合同 webview 都需 URL 化路由 |
+| 鉴权 / 角色 | **go_router `redirect` + `ShellRoute`** | auth flow：登录后强制查手机绑定→未绑定跳 bind-phone；居间人/经纪人只显示佣金模块、隐藏其他 → 守卫 + 角色化 Shell 一处声明 |
+| 网络 | **dio + Interceptor + 模块 Repository** | ServiceCode 信封 `{code,data,message}` 统一解包；token 注入；RPC 风格 GET(分享)/POST(其余)、take/skip 分页 |
+| 模型 | **json_serializable** | 不可变 class + 手写 copyWith、JSON。**金额一律 `num`/`double`**（service 出口已 Decimal→number） |
+| 枚举 | **Dart 增强枚举 `(value, label)`** | 严格对齐 `packages/interface`，禁硬编码字符串（§0.1）。id 混用 cuid/uuid → 统一按 `String` |
+| 图片 | **`buildImageUrl` + OSS resize** | 同源 OSS，列表小图走 `?x-oss-process`，`cached_network_image` 缓存；放大/分享用原图 |
+| 三方 | fluwx(登录/支付/分享)、flutter_map、signature 画布(合同手写签)、qr_flutter(核销码)、webview(合同 PDF) | 对应 payment/contract/verification/land-map 流程 |
+
+### 5.3 跨端协议落地（与 §〇 一致）
+
+- **枚举**：源在 `app/lib/common/enum/*.dart`（增强 enum，§0.1 约定位置），与 `packages/interface/src/enum/sql.enum.ts` 一一对应；新增 enum 必须三端同步。
+- **API**：RPC 风格，详情类(需分享) GET `?id=`、列表/操作 POST；分页统一 `take`/`skip`；响应信封 `{ code, data, message }` 由拦截器解包，错误码走 `ServiceCode`。
+- **Decimal**：service 已统一 Decimal→number，模型金额字段按 `num` 解析。
+- **id**：cuid / uuid 在前端均为 `String`，不做格式校验。
+
+### 5.4 关键流程的架构落点
+
+| 文档需求 | 落点 |
+| --- | --- |
+| 详情可分享 (GET ?id=) | go_router 深链 + 路径/查询参数 |
+| 登录后强制绑手机 / 角色化模块可见 | go_router `redirect` 守卫 + 角色 `ShellRoute` |
+| 支付轮询(5s × 4 = 20s)+ 超时 | `AsyncNotifier` + 定时器，状态机 待支付/成功/失败/超时 |
+| 合同手写签名 → 重生成 PDF | signature 画布(base64) + webview/pdf 预览 + 上传 |
+| 核销码展示 | qr_flutter + verification repository |
+| 地图可视范围搜索 | flutter_map + 边界变化触发 repository |
+| 下拉刷新 / 上拉加载 | `AsyncNotifier` 分页(skip 递增) |
+
+### 5.5 硬约定
+
+- **不引入 GetX**；导航/弹窗不写进 Notifier（逻辑层保持纯净、可测），由 View 层根据返回结果决定跳转。
+- 金额 `num`；id `String`；枚举增强 enum 对齐 packages/interface（禁字符串字面量）。
+- 图片：列表/卡片走 OSS resize，放大/分享用原图。

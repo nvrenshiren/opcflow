@@ -1,0 +1,44 @@
+{
+  "name": "@whzhuke/workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI workflow engine: artifact DAG, trust gates, event stream, workbench",
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check:isolation": "tsx scripts/check-isolation.ts",
+    "web:build": "vite build",
+    "serve": "tsx server/start.ts",
+    "start": "pnpm run web:build && tsx server/start.ts"
+  },
+  "bin": {
+    "workbench": "cli.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11",
+    "@fastify/static": "^8",
+    "@modelcontextprotocol/sdk": "^1",
+    "better-sqlite3": "^12",
+    "chalk": "^5",
+    "fastify": "^5",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^6",
+    "@monaco-editor/react": "^4.7.0",
+    "@types/better-sqlite3": "^7",
+    "@types/node": "^22",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^5",
+    "antd": "^6",
+    "mermaid": "^11",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-markdown": "^10",
+    "remark-gfm": "^4",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vite": "^7"
+  }
+}

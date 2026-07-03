@@ -1,0 +1,188 @@
+# 邦小二微信小程序设计系统 (weapp)
+
+> **性质**: 端级契约。从既成事实(现有页面 .tsx / app.less / unocss.config.ts / 已有设计稿 / designer memory)**反向提炼**,不是凭空设计。
+> **技术底座**: Taro 4 + React 18 + MobX 6 + UnoCSS(unocss-preset-weapp)
+> **溯源**: 整合 `docs/design/weapp.md` v1.0(2026-06-18) + 2026-06 反向对齐审计结论(见文末 memory 清单)
+> 改本文 → 全端 weapp 原型 stale,须重新审批。
+
+---
+
+## 1. 设计内核
+
+- 结构化、柔和感、插画驱动的生活服务类小程序;「品牌蓝 + 强调橙」双色 + C4D 风格 3D 插画 + 暖调渐变表面。
+- 每页至少满足 2 项家族识别:① 蓝橙品牌色语义化 ② ≥1 处 3D 立体元素 ③ 柔光渐变卡片 + 无硬阴影。
+- 来源:`docs/design/weapp.md §1`。
+
+---
+
+## 2. 设计令牌
+
+### 2.1 色板(⚙️ = 已在 `unocss.config.ts` theme.colors 注册)
+
+| 语义 | 色值 | 场景 | 来源 |
+| :--- | :--- | :--- | :--- |
+| 品牌蓝 primary | `#4A8AF4`(阴影调 `#3D81FF`) | 主操作/主链接/主分类 | weapp.md §2.1.1 + 页面硬编码实测 |
+| 强调橙 accent | `#FF7A45` | CTA/价格/选中/高亮 | 同上 |
+| 成功 success | `#52C41A` | 业务成功态/已完成 | weapp.md §2.1.1 |
+| 微信绿 wechatGreen | `#07C160` | **仅微信场景**(支付/授权/分享) | weapp.md §2.1.1 |
+| 错误 error | `#FF5252`(状态标签用 `#FF4D4F`) | 错误/负向反馈 | weapp.md §2.1.1 / §5 |
+| ⚙️ ink | `#1F2937` | 一级标题/核心正文 | unocss.config.ts |
+| ⚙️ muted | `#6B7280` | 二级正文/辅助 | unocss.config.ts |
+| ⚙️ faint | `#9CA3AF` | 弱化/占位/时间戳 | unocss.config.ts |
+| ⚙️ line | `#E5E7EB` | 分割线/边框 | unocss.config.ts |
+| ⚙️ pageBlue | `#EAF2FF` | 蓝调页面淡底 | unocss.config.ts |
+| 页面底 | `#F6F7F8` | 全局默认背景(`app.less` 设 `page`) | app.less |
+| 卡片白 | `#FFFFFF` | 卡片/弹窗底 | — |
+
+> ⚠️ **success vs wechatGreen 严格分离**:业务成功态用 `success`,禁用 `wechatGreen`。
+> ⚠️ **令牌 vs 现状的既成偏差(立此存照,不粉饰)**:现有页面(land/user/trade 等)大量**直接硬编码 hex**(如 `#0F172A` 深色文字、`#4A8AF4`/`#FF7A45`)而非引用 ⚙️ 令牌;并在**非微信场景误用微信绿**(user 在线点/land 出租角标/submit Switch)。新稿一律走令牌 + 正确语义,**不复制此偏差**。来源:[[weapp-design-prompt-debt]]、[[weapp-trade-jobs-reverse-aligned]]。
+
+### 2.2 渐变(默认 135°,页面级允许 180°)
+
+| 类型 | 色组 | 场景 |
+| :--- | :--- | :--- |
+| 页面级·蓝 | `#4A8AF4`→`#6FA3F7`→`#F7FAFF` | 品牌主页/Hero |
+| 页面级·暖 | `#FFF6E5`→`#FFF9F0`→`#FFFFFF` | 营销/落地页 |
+| 页面级·淡 | `#F7FAFF`→`#FFFFFF` | 常规功能页 |
+| 卡片·蓝/绿/橙/红 | `#F0F6FF`/`#EDFBF0`/`#FFF1E8`/`#FFF0F0`→`#FFFFFF` | 业务模块色卡 |
+
+> 风景插画渐变仅用于 3D 插画内部图层,禁作页面背景。来源:weapp.md §2.1.3。
+
+### 2.3 排版(单位 rpx,基准宽 750,`deviceRatio 750:1`,1 设计 px ≈ 1rpx)
+
+| 语义 | 字号(rpx) | 字重 | 场景 |
+| :--- | :-- | :-- | :--- |
+| 页面大标题 | 44 | 800 | 一级标题 |
+| 区块标题 | 34 | 700 | 卡片/导航标题 |
+| 卡片标题 | 30-32 | 600 | 列表主标题 |
+| 正文 | 28 | 400-500 | 详情/正文 |
+| 辅助 | 24 | 400 | 元信息/标签 |
+| 价格 | 40-44 | 700 | **橙色加粗** |
+
+字重刻度 400/500/600/700/800。来源:weapp.md §2.2。
+
+### 2.4 间距 / 圆角(rpx)
+
+- 间距基础 8rpx,刻度 8 / 16 / 24 / 32 / 40 / 48 / 64。
+- 圆角:卡片·弹窗 40rpx、输入框·小卡 24rpx、主按钮胶囊 999rpx、标签 12rpx。
+- 来源:weapp.md §2.3。
+
+### 2.5 阴影(柔光无硬影)
+
+用渐变/色块分层替代硬阴影;阴影与品牌蓝调和,**禁纯黑/硬边阴影**。弱(蓝~8%)/中(~12%)/强(~15%)三级,分别用于普通卡片/悬浮选中/弹窗浮层。来源:weapp.md §2.4。
+
+---
+
+## 3. 布局与安全区
+
+- 基准宽 750rpx 等比缩放;页面默认底色 `#F6F7F8`。
+- 标准结构:自定义导航(胶囊避让)→ Hero/页面渐变(可选)→ 内容卡片 → 列表/表单 → 底部固定操作区(避让 Home Indicator)。
+- 安全区:顶部避让微信胶囊 + 状态栏(禁写死高度);底部避让 iPhone Home Indicator。
+- 来源:weapp.md §3。
+
+---
+
+## 4. 组件形态(选型习惯 · 以现有页面为准)
+
+### 4.1 UI 栈真相
+
+实际 UI = **Taro 内置组件 + iconfont 图标 + UnoCSS 原子类 + 自封装业务组件**。**NutUI 虽在依赖中但页面未实际使用**(仅借 `nutui-iconfont` 字体类) —— 设计稿**禁假定 NutUI 组件可用**。来源:weapp.md §4.1 + `src/pages/*.tsx` 抽样(land/info、glass.header 等)。
+
+### 4.2 Taro 基础元素映射
+
+| 设计元素 | Taro 标签 | 注意 |
+| :--- | :--- | :--- |
+| 容器/卡片 | `<View>` | 圆角 + 柔光阴影 |
+| 文本 | `<Text>` | 多行截断注意小程序行为 |
+| 图片 | `<Image>` | 注明裁剪模式;列表小图走 OSS resize(`AliyunResizeImage`) |
+| 按钮 | `<Button>` / `<View>` | 三态齐全(默认/active/disabled) |
+| 列表/轮播 | `<ScrollView>` / `<Swiper>` | 长列表注意性能 |
+| 输入 | `<Input>` / `<Textarea>` | 聚焦态品牌色 |
+| 富文本 | `<RichText>` | 岗位职责/详情等 |
+| 地图 | `<Map>` | 房源位置 |
+| 图标 | `<AntdIcon name=.. />`(iconfont) | **不用 SVG**(§6) |
+
+### 4.3 项目自封装通用组件(现有,优先复用)
+
+| 组件 | 职责 | 来源文件 |
+| :--- | :--- | :--- |
+| `GlassHeader` | 毛玻璃吸顶/固定导航,随滚动 blur+alpha 渐变、文字色 dynamic 切换、可联动原生导航栏色 | components/glass.header.tsx |
+| `NavBox` | 导航左/中/右三槽布局 | components/nav.box.tsx |
+| `ScrollBox` | 统一滚动容器(记录 scrollDetail,配合 GlassHeader sticky) | components/scroll.box.tsx |
+| `SafePage` | 页面安全区容器 | components/safe.page.tsx |
+| `NUITheme` | 主题包裹 | components/nui.theme.tsx |
+| `AntdIcon` | iconfont 图标(`antdfont`/`nutui-iconfont` 字体,`name` 取图标名) | components/antdIcon.tsx |
+| `TaskBack` | 返回控件 | components/task.back.tsx |
+
+其余业务通用件(内容卡/状态标签/价格文本/空态含 3D 插画/骨架屏 shimmer/轻提示/核销二维码/角色徽标/Banner)与 `app.md §5.4` 同源,按小程序能力还原。设计稿描述组件时**按上述自封装件 + Taro 组件命名**,不引 NutUI。
+
+---
+
+## 5. 状态标签配色(按业务域,与 enum 一一对应)
+
+| 语义 | 背景 | 文字 | 对应枚举示例 |
+| :--- | :--- | :--- | :--- |
+| 待处理/待确认 | `#FFF7E6` | `#FA8C16` | AppointmentStatus.待确认 |
+| 信息/已确认 | `#E6F7FF` | `#1890FF` | AppointmentStatus.已确认 |
+| 成功/已完成 | `#F6FFED` | `#52C41A` | AppointmentStatus.已完成、OrderItemStatus 完成态 |
+| 取消/拒绝 | `#FFF1F0` | `#FF4D4F` | 取消/拒绝类 |
+| 停用/失效 | `#F5F5F5` | `#8C8C8C` | 停止/失效类 |
+
+逐值映射与 `app.md §5.3` 保持一致。新增业务状态:先确认 enum 三端同步,再标 label + 配色。来源:weapp.md §5、[[weapp-appointment-status-colors]]。
+
+> ⚠️ **预约(Appointment)现状与令牌语义对调(实测 appointment.tsx)**:实现里 **已取消 = 灰**、**已停止 = 红**,与上表语义(取消=红/停止=灰)**正好相反**;「已过期」是时间维度附加标签,实测为**红系**。"docs 跟随 code"任务须按实现描述并列为与 PRD 的实质冲突;"对齐 PRD"任务则按上表语义。这是**待裁决点**,详见 [[weapp-appointment-status-colors]]。
+
+---
+
+## 6. 微信小程序硬约束(逐条 · 强制)
+
+| 约束 | 正确做法 | 来源 |
+| :--- | :--- | :--- |
+| ❌ **不支持 `<svg>` 标签** | **用 `<View>` 还原图形**;图标用 iconfont(`AntdIcon`)。`CLAUDE.md §3.2` | CLAUDE.md / app.less iconfont |
+| ❌ 不识别**页面级 `@keyframes`** | 关键帧**只写 `app.less`**;页面级 @keyframes 静默失效 | app.less §关键帧 |
+| ❌ hover 兼容性差 | 交互态**用 `active:`** 替代 hover | weapp.md §9 |
+| Button 三态 | **默认 / active / disabled 必须齐全** | weapp.md §9 |
+| `transform-origin` | 因使用位置不固定,**在使用处 className 单独定制**;关键帧只定义动作 | app.less blink 注释 |
+| 安全区 | 顶部避让胶囊按钮,底部避让 Home Indicator | weapp.md §3.3 |
+
+### 6.1 app.less 已注册关键帧(复用,勿页面级重写)
+
+`floaty` / `bobA` / `bobB` / `bobCenter`(悬浮)、`breath`(呼吸)、`ringSpin`(环旋转)、`twinkle`(粒子闪烁)、`blink` / `blushPulse` / `handWave`(吉祥物表情动作)、`shimmer`(骨架屏)。需新增关键帧时在稿内**明确标注"需在 app.less 新增"**。来源:`weapp/src/app.less`。
+
+---
+
+## 7. 样式约束(UnoCSS)
+
+- **className 优先**,引用主题令牌(`ink`/`muted`/`faint`/`line`/`pageBlue`);单位 `rpx`,**禁硬编码 px 色值**。
+- 支持属性化模式(`presetWeappAttributify`)。
+- 动态 className 同 admin 约束:唯一允许 `classNames("base", { cond })`,**禁**模板字面量/三元/抽 const。
+- 来源:weapp.md §8 + unocss.config.ts。
+
+---
+
+## 8. 交互与反馈
+
+- 点击 CTA:跳转/触发 + Toast;下拉刷新:品牌色加载指示;上拉加载:底部"加载更多"+旋转;高危操作:二次确认弹窗。
+- 反馈:成功(绿 Toast 3s)/ 错误(红 Toast 3s)/ 加载(半透明蒙层+动画)/ 空态(空状态组件 + 3D 插画 + 引导)。
+- 来源:weapp.md §6。
+
+---
+
+## 9. 反模式
+
+`<svg>` ❌(用 view)· 页面级 @keyframes ❌(放 app.less)· hover 做交互态 ❌(用 active:)· Button 缺态 ❌(三态齐全)· 单色平铺大背景 ❌(须页面级渐变)· 业务成功态用微信绿 ❌· 纯黑/硬阴影 ❌· 硬编码 px 色值 ❌· 设计稿写 API 路径/DB 字段/类名/状态管理选型 ❌· 假定 NutUI 组件可用 ❌。来源:weapp.md §10。
+
+---
+
+## 10. 溯源与收编的 memory
+
+- [[weapp-appointment-status-colors]] — 预约 5 态令牌 + **已取消/已停止配色对调**、取消弹窗无原因输入(待裁决)。
+- [[weapp-design-prompt-debt]] — 三类系统债(技术泄漏 / Ant 色板+硬编码 / 与裁剪后 PRD 矛盾);硬编码 hex 与非微信场景误用微信绿的既成偏差。
+- [[weapp-trade-jobs-reverse-aligned]] — trade/jobs 6 页 code 现状(jobs 含公司卡/HR、submit 多字段预填等)与 PRD 冲突清单。
+- 基线文档 `docs/design/weapp.md` v1.0(2026-06-18)整合入本文。
+
+## 11. 待用户裁决点
+
+1. **预约状态配色对调**:令牌语义(取消=红/停止=灰)与线上实现(已取消=灰/已停止=红)相反;本系统文档以**令牌语义为准立法**,现有页面属既成偏差,是否要求代码回归令牌?
+2. **硬编码 hex / 误用微信绿**:现有页面普遍硬编码 hex 且在非微信场景用 `#07C160`;本文立法为"令牌优先 + 微信绿仅限微信场景",存量页面是否需专项整改?
+3. **本文 vs 旧 `docs/design/weapp.md`**:两份并存,建议以本文(`systems/weapp.md`)为唯一端级契约,旧文归档或删除。

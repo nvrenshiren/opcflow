@@ -1,0 +1,62 @@
+[
+  {
+    "path": ".claude/agents/architect.md",
+    "approved_hash": "6cc68789de6e23a5f8d873ebbadd704a2bff4a64",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 06:39:05"
+  },
+  {
+    "path": ".claude/agents/designer.md",
+    "approved_hash": "67f0ec916259f252ee1618397a2ed63c8a692b63",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 06:39:07"
+  },
+  {
+    "path": ".claude/agents/developer.md",
+    "approved_hash": "922497fe30b2c7ce2a361cdea97eba1d311b75a7",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 06:39:08"
+  },
+  {
+    "path": ".claude/agents/product-manager.md",
+    "approved_hash": "17c33c1b242a3dd6d9fed807991d0f6820c72d68",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 06:39:10"
+  },
+  {
+    "path": ".claude/agents/qa.md",
+    "approved_hash": "9c2660a557af5f9f947df62ef1bda6ebcaab829a",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 06:39:11"
+  },
+  {
+    "path": "ARCHITECTURE.md",
+    "approved_hash": "6e0fe0b27fca1ff96e3c0e7bd5a364b04353c59b",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 05:53:32"
+  },
+  {
+    "path": "TECH.md",
+    "approved_hash": "93acd2dd2223c142ae9c4446de9f0f3ea551504a",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 05:53:28"
+  },
+  {
+    "path": "docs/design/systems/admin.md",
+    "approved_hash": "33a1c5e7c392ec4c0e0962714f3080a320490e44",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 05:53:26"
+  },
+  {
+    "path": "docs/design/systems/app.md",
+    "approved_hash": "fa4cb919e25c7920840217e20e203e02df14d63a",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 05:53:22"
+  },
+  {
+    "path": "docs/design/systems/weapp.md",
+    "approved_hash": "c76d020666b8c04fecca983428361bdd45eed4c6",
+    "reviewed_by": "user",
+    "reviewed_at": "2026-07-03 05:53:17"
+  }
+]
