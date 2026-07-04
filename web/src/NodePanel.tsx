@@ -28,6 +28,9 @@ export function NodePanel({ node, liveEvents }: { node: TreeNode | null; liveEve
   const [tasks, setTasks] = useState<Task[]>([])
   const [viewing, setViewing] = useState<Artifact | null>(null)
 
+  // liveEvents 上限 50 条,length 会饱和;用最新事件 id(单调递增)驱动实时刷新
+  const latestEventId = liveEvents[0]?.id ?? 0
+
   useEffect(() => {
     if (!node) return
     const q =
@@ -43,7 +46,7 @@ export function NodePanel({ node, liveEvents }: { node: TreeNode | null; liveEve
       setArtifacts(d.artifacts)
       setTasks(d.tasks)
     })
-  }, [node, liveEvents.length])
+  }, [node, latestEventId])
 
   if (!node) {
     return (

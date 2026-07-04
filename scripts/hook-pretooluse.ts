@@ -32,12 +32,12 @@ async function main() {
   if (!contractKinds(ctx.config).includes(artifact.kind)) return
   if (reviewStatus(artifact) !== "approved") return
 
-  // 合法通行证:环境变量声明了一个已领取的未完成任务
-  const taskEnv = process.env.WORKBENCH_TASK_ID
-  if (taskEnv) {
+  // 合法通行证:环境变量声明了一个已领取的未完成任务(非数字不算通行证,也不能借抛错触发 fail-open 绕过)
+  const taskEnv = Number(process.env.WORKBENCH_TASK_ID)
+  if (Number.isInteger(taskEnv) && taskEnv > 0) {
     const task = ctx.db
       .prepare("SELECT COUNT(*) AS c FROM tasks WHERE id = ? AND assignee IS NOT NULL AND status IN ('pending','in_progress')")
-      .get(parseInt(taskEnv)) as { c: number }
+      .get(taskEnv) as { c: number }
     if (task.c > 0) return
   }
 
@@ -46,7 +46,7 @@ async function main() {
     entityId: artifact.id,
     event: "would_block",
     actor: "write-gate",
-    payload: { path: rel, kind: artifact.kind, taskEnv: taskEnv ?? null, mode },
+    payload: { path: rel, kind: artifact.kind, taskEnv: process.env.WORKBENCH_TASK_ID ?? null, mode },
     module: artifact.module,
     endpoint: artifact.endpoint,
     page: artifact.page

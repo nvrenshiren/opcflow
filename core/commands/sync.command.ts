@@ -5,7 +5,7 @@ import { logEvent } from "../events"
 import { headCommitInfo } from "../git"
 import { getKindRegistry } from "../kind"
 import type { ArtifactKind, ArtifactRow, Ctx, Role } from "../types"
-import { refreshArtifact } from "./artifact.commands"
+import { refreshArtifact, resolveArtifact } from "./artifact.commands"
 
 export interface SyncSummary {
   checked: number
@@ -185,10 +185,7 @@ export function detectOrphanCommit(ctx: Ctx): { orphan: boolean; hits: string[] 
 /** agent 对 approved 内容的异议出口:留痕并停止,等用户裁决 */
 export function disputeArtifact(ctx: Ctx, ref: { path?: string; id?: number }, actor: string, reason: string): void {
   if (!reason?.trim()) throw new Error("异议必须说明理由")
-  const artifact = ctx.db
-    .prepare(ref.id !== undefined ? "SELECT * FROM artifacts WHERE id = ?" : "SELECT * FROM artifacts WHERE path = ?")
-    .get(ref.id !== undefined ? ref.id : ref.path!.replace(/\\/g, "/")) as ArtifactRow | undefined
-  if (!artifact) throw new Error(`产物不存在: ${ref.id ?? ref.path}`)
+  const artifact = resolveArtifact(ctx, ref)
   const tx = ctx.db.transaction(() => {
     logEvent(ctx.db, {
       entityType: "artifact",

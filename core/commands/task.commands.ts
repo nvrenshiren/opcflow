@@ -4,6 +4,7 @@ import { validateClaim, validateComplete } from "../gates"
 import { gitHead, touchedByTaskTrailer, touchedSince } from "../git"
 import { closeLinkedIssue } from "../gh"
 import { contractKinds, normalizeModule } from "../kind"
+import { normalizeRelPath } from "./artifact.commands"
 import { ownerRole } from "./sync.command"
 import type { ArtifactRow, Ctx, EventRow, Role, TaskRow, TaskStatus, TaskType } from "../types"
 
@@ -268,7 +269,7 @@ export function removeTask(ctx: Ctx, { id, operator, force = false }: { id: numb
  */
 export function addTaskInput(ctx: Ctx, { id, path, operator }: { id: number; path: string; operator: string }): void {
   const task = getTaskRow(ctx, id)
-  const artifact = ctx.db.prepare("SELECT * FROM artifacts WHERE path = ?").get(path.replace(/\\/g, "/")) as
+  const artifact = ctx.db.prepare("SELECT * FROM artifacts WHERE path = ?").get(normalizeRelPath(ctx, path)) as
     | ArtifactRow
     | undefined
   if (!artifact) throw new Error(`产物未登记: ${path},无法申报依赖`)

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { CONFIG_FILENAME } from "../config"
+import { CONFIG_FILENAME, workbenchRelPath } from "../config"
 import { openWorkbenchAt } from "../db"
 import type { Ctx, Role } from "../types"
 import { genAgents } from "./gen-agents.command"
@@ -68,7 +68,7 @@ export function initProject(root: string, opts: InitOptions): InitResult {
     pipeline,
     docs: { prd: "docs/prd", architecture: "docs/architecture", design: "docs/design", acceptance: "docs/acceptance" },
     codeRoots: opts.codeRoots ?? {},
-    cli: "npx tsx workbench/cli.ts",
+    cli: `npx tsx ${workbenchRelPath(root, "cli.ts")}`,
     machineChecks: { enabled: false },
     protocolLints: [],
     moduleMapping: {},
@@ -100,7 +100,11 @@ export function initProject(root: string, opts: InitOptions): InitResult {
     if (!existsSync(p)) {
       writeFileSync(
         p,
-        JSON.stringify({ mcpServers: { workbench: { command: "npx", args: ["tsx", "workbench/server/mcp.ts"] } } }, null, 2) + "\n"
+        JSON.stringify(
+          { mcpServers: { workbench: { command: "npx", args: ["tsx", workbenchRelPath(root, "server/mcp.ts")] } } },
+          null,
+          2
+        ) + "\n"
       )
       mcpPath = ".mcp.json"
     }

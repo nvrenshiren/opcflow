@@ -2,7 +2,7 @@ import fastifyCors from "@fastify/cors"
 import fastifyStatic from "@fastify/static"
 import Fastify, { type FastifyInstance } from "fastify"
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
-import { join, normalize } from "node:path"
+import { isAbsolute, join, normalize, relative } from "node:path"
 import {
   approveArtifact,
   approvedContent,
@@ -13,6 +13,7 @@ import {
 } from "../core/commands/artifact.commands"
 import { syncArtifacts } from "../core/commands/sync.command"
 import { claimTask, updateTask } from "../core/commands/task.commands"
+import { everApproved, prototypeEndorsed } from "../core/derive"
 import { listEvents } from "../core/events"
 import { buildTree, nodeDetail } from "../core/tree"
 import type { ArtifactRow, Ctx } from "../core/types"
@@ -30,7 +31,9 @@ function guardedAbsPath(ctx: Ctx, artifact: ArtifactRow, rel?: string): string {
   const base = normalize(join(ctx.root, artifact.path))
   if (!rel) return base
   const target = normalize(join(base, rel))
-  if (!target.startsWith(base)) {
+  // startsWith 会放过共享前缀的兄弟目录(docs/prd → docs/prd-x),用 relative 严判
+  const r = relative(base, target)
+  if (r === "" || r === "." || r.startsWith("..") || isAbsolute(r)) {
     throw Object.assign(new Error("路径越界"), { statusCode: 403 })
   }
   return target
@@ -170,10 +173,14 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
   // ─── 写 API(M3):全部走 commands 层,gate 错误原样回传 ───────────
 
   app.get("/api/review-queue", async () => {
-    const rows = listArtifacts(ctx, {}).filter(
-      r => r.review_status === "pending" || r.review_status === "invalidated"
-    )
-    return rows
+    // 前端依赖 ever_approved(区分"复审中"与首次待审),与 nodeDetail 同口径补齐
+    return listArtifacts(ctx, {})
+      .filter(r => r.review_status === "pending" || r.review_status === "invalidated")
+      .map(r => ({
+        ...r,
+        ever_approved: everApproved(r),
+        endorsed: r.kind === "prototype" ? prototypeEndorsed(ctx.db, r) : false
+      }))
   })
 
   app.get<{ Params: { id: string } }>("/api/artifact/:id/diff", async req => {

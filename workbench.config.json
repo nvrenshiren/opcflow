@@ -6,105 +6,20 @@
     "design": "docs/design",
     "acceptance": "docs/acceptance"
   },
-  "codeRoots": {
-    "service": ["service/src/modules/{client}/{module}"],
-    "admin": ["admin/src/pages/home/{module}", "admin/src/components/form/{module}"],
-    "weapp": ["weapp/src/pages/{module}"],
-    "app": ["app/lib/features/{module}"]
-  },
+  "codeRoots": {},
   "machineChecks": {
-    "enabled": true,
-    "service": ["cd service && npx tsc --noEmit"],
-    "admin": ["cd admin && npx tsc --noEmit"],
-    "weapp": ["cd weapp && npx tsc --noEmit"],
-    "app": []
+    "enabled": false
   },
-  "protocolLints": [
-    {
-      "name": "no-sql-enum-literal",
-      "grep": "z\\.enum\\(\\[\\s*\"[A-Z]",
-      "paths": ["service/src"],
-      "endpoint": "service",
-      "message": "SQL enum 禁止硬编码大写字面量,从 @whzhuke/interface 引用(小写查询参数字面量不在此列)"
-    },
-    {
-      "name": "no-page-size",
-      "grep": "pageSize",
-      "paths": ["service/src/modules"],
-      "endpoint": "service",
-      "message": "分页统一 take/skip,禁止 page/pageSize"
-    },
-    {
-      "name": "no-svg-in-weapp",
-      "grep": "<svg",
-      "paths": ["weapp/src"],
-      "endpoint": "weapp",
-      "message": "微信小程序不支持 svg 标签,用 view 还原"
-    },
-    {
-      "name": "no-enum-value-key-admin",
-      "grep": "value:\\s*[A-Z][A-Za-z]+\\.[A-Z][A-Z_0-9]*\\b",
-      "paths": ["admin/src"],
-      "endpoint": "admin",
-      "message": "value 位用 enum 英文 KEY 会发错值,用 Enum[Enum.中文key]"
-    },
-    {
-      "name": "no-enum-value-key-weapp",
-      "grep": "value:\\s*[A-Z][A-Za-z]+\\.[A-Z][A-Z_0-9]*\\b",
-      "paths": ["weapp/src"],
-      "endpoint": "weapp",
-      "message": "value 位用 enum 英文 KEY 会发错值,用 Enum[Enum.中文key]"
-    },
-    {
-      "name": "no-record-enum-map-weapp",
-      "grep": "Record<string, string>\\s*=\\s*\\{",
-      "paths": ["weapp/src"],
-      "endpoint": "weapp",
-      "message": "禁止 Record<string,string> 重复 enum 数据,用双向 enum 反向映射"
-    },
-    {
-      "name": "no-record-enum-map-admin",
-      "grep": "Record<string, string>\\s*=\\s*\\{",
-      "paths": ["admin/src"],
-      "endpoint": "admin",
-      "message": "禁止 Record<string,string> 重复 enum 数据,用双向 enum 反向映射"
-    },
-    {
-      "name": "api-doc-no-page-size",
-      "grep": "pageSize",
-      "paths": ["docs/architecture/api"],
-      "role": "architect",
-      "message": "API 契约分页统一 take/skip",
-      "allow": ["docs/architecture/api/admin/systemConfig.md"]
-    }
-  ],
-  "moduleMapping": {
-    "landType": "land",
-    "community": "land",
-    "landBusiness": "land",
-    "landCommunity": "land",
-    "landField": "land",
-    "appointment": "trade",
-    "contractTemplate": "contract",
-    "newsCategory": "news",
-    "adSpace": "ad",
-    "manager": "user",
-    "brokerApplication": "user",
-    "rules": "menu",
-    "system": "menu",
-    "sms": "auth",
-    "jobHunt": "jobs"
-  },
-  "cli": "npx tsx tasks/task-cli.ts",
+  "protocolLints": [],
+  "moduleMapping": {},
   "feedbackHalfLifeDays": 90,
   "gates": {
     "approvalMode": "warn",
     "writeGate": "observe"
   },
   "git": {
-    "taskTrailer": "on",
+    "taskTrailer": "off",
     "trailerKey": "Task"
   },
-  "legacyDb": "tasks/task.db",
   "dataDir": ".workbench"
 }

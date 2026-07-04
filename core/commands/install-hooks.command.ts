@@ -1,5 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { workbenchRelPath } from "../config"
 import type { Ctx } from "../types"
 
 /**
@@ -15,7 +16,7 @@ export function installGitHooks(ctx: Ctx): string[] {
 
   const postCommit = `#!/bin/sh
 # workbench:提交后对账(fail-open,后台执行不阻塞 git)
-npx tsx workbench/scripts/hook-postcommit.ts >/dev/null 2>&1 &
+npx tsx ${workbenchRelPath(ctx.root, "scripts/hook-postcommit.ts")} >/dev/null 2>&1 &
 exit 0
 `
   writeFileSync(join(hooksDir, "post-commit"), postCommit)

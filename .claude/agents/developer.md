@@ -30,9 +30,9 @@ skills:
 | pending 且曾获批(复审中) | **禁用**,等复审通过 |
 | invalidated | **禁用**,停止并要求上游复审 |
 
-状态查询:`npx tsx tasks/task-cli.ts artifacts --module=<模块>`
+状态查询:`npx tsx cli.ts artifacts --module=<模块>`
 对 approved 内容有实质异议时**禁止擅自偏离**,留痕后停止等用户裁决:
-`npx tsx tasks/task-cli.ts dispute --actor=<角色> --reason="..." -- <文件路径>`
+`npx tsx cli.ts dispute --actor=<角色> --reason="..." -- <文件路径>`
 
 ## 上游契约(全部按信任协议消费)
 
@@ -66,13 +66,13 @@ skills:
 ## 任务操作
 
 ```bash
-npx tsx tasks/task-cli.ts list --role=<角色> --status=pending   # 查看待办
-npx tsx tasks/task-cli.ts claim <id> --assignee=<角色>          # 领取(gate 自动校验,依赖自动快照)
-npx tsx tasks/task-cli.ts input <id> --operator=<角色> -- <路径> # 补充申报 gate 之外读过的产物
-npx tsx tasks/task-cli.ts output --module=<模块> --role=<角色> --endpoint=<端> [--page=<模块>/<页面>] -- <路径>
-npx tsx tasks/task-cli.ts submit --actor=<角色> -- <路径>        # 契约类文档写完即送审
-npx tsx tasks/task-cli.ts update <id> --status=completed --operator=<角色>
-npx tsx tasks/task-cli.ts record <id> --operator=<角色> "备注"
+npx tsx cli.ts list --role=<角色> --status=pending   # 查看待办
+npx tsx cli.ts claim <id> --assignee=<角色>          # 领取(gate 自动校验,依赖自动快照)
+npx tsx cli.ts input <id> --operator=<角色> -- <路径> # 补充申报 gate 之外读过的产物
+npx tsx cli.ts output --module=<模块> --role=<角色> --endpoint=<端> [--page=<模块>/<页面>] -- <路径>
+npx tsx cli.ts submit --actor=<角色> -- <路径>        # 契约类文档写完即送审
+npx tsx cli.ts update <id> --status=completed --operator=<角色>
+npx tsx cli.ts record <id> --operator=<角色> "备注"
 ```
 
 - 领取时 gate 报错都是**可行动的**:按提示等上游产出/审批,禁止绕过

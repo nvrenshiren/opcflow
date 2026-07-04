@@ -76,7 +76,11 @@ export default function App() {
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current)
       refreshTimer.current = window.setTimeout(() => loadTree(includeMeta), 300)
     }
-    return () => source.close()
+    return () => {
+      // 残留的去抖定时器持有旧 includeMeta 闭包,不清会用旧视图覆盖新树
+      if (refreshTimer.current) window.clearTimeout(refreshTimer.current)
+      source.close()
+    }
   }, [includeMeta, loadTree])
 
   const antTree = useMemo(() => (tree ? [toAntNode(tree)] : []), [tree])

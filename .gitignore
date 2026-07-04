@@ -2,3 +2,5 @@ node_modules
 web/dist
 *.tsbuildinfo
 .DS_Store
+.workbench/workbench.db-shm
+.workbench/workbench.db-wal
