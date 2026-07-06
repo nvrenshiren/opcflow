@@ -35,6 +35,8 @@ const TRUST_PROTOCOL = `## 信任协议(最高优先级)
 
 const CLI_GUIDE = `## 任务操作
 
+MCP 已注册时优先用 \`wb_*\` typed tools(与 CLI 同源同事务);CLI 等价:
+
 \`\`\`bash
 {{CLI}} list --role=<角色> --status=pending   # 查看待办
 {{CLI}} claim <id> --assignee=<角色>          # 领取(gate 自动校验,依赖自动快照)
@@ -79,7 +81,11 @@ export function genAgents(ctx: Ctx, templatesDir?: string): GenAgentsResult {
     PATH_PROTOTYPES: expandPath(ctx, "prototype"),
     PATH_ACCEPTANCE: expandPath(ctx, "acceptance"),
     ENDPOINTS: ctx.config.endpoints.join(" / "),
-    PIPELINE: ctx.config.pipeline.join(" → ")
+    PIPELINE: ctx.config.pipeline.join(" → "),
+    // 代码目录约定按 config.codeRoots 注入(markdown 表行),模板零硬编码
+    CODE_ROOTS: ctx.config.endpoints
+      .map(e => `| ${e} | ${(ctx.config.codeRoots[e] ?? []).join("、") || "(待配置:workbench.config.json 的 codeRoots)"} |`)
+      .join("\n")
   }
 
   const written: string[] = []
