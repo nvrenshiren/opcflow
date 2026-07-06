@@ -154,6 +154,10 @@ feedback --actor=user --verdict=+1 -- <路径>
 plan --module=<模块>                 # 派发整组任务
 qa <id> --result=pass|fail --operator=qa [--reason=]
 intake                               # 从 gh issues 分诊建任务
+
+# 进化(M8)
+retro [--module= --json=true]        # 反馈加权提炼(skill 候选/Red Flags)+ 审批吞吐报表
+export                               # events/feedback 导出 jsonl(post-commit 自动跑)
 ```
 
 ---
@@ -242,6 +246,9 @@ intake                               # 从 gh issues 分诊建任务
   没人碰的模块永远 draft,不花你一分钟。
 - **元产物入体系**:agent 定义、skill、PLAN 自身也注册为产物、走审批——驱动系统的文件
   不能游离于系统之外。
+- **反馈进化**:你的 👍👎 和 QA 结果按半衰期加权累积;`retro` 出确定性证据包
+  (3 正例 → skill 候选 / 2 负例 → Red Flags / 混杂观察),AI 据此起草 skill 草稿,
+  **人审通过才作为经验生效**——经验也是契约,不会悄悄改变 AI 行为。
 
 ---
 

@@ -13,6 +13,7 @@ import {
   recordQaResult,
   recordNote,
   registerOutput,
+  runRetrospective,
   submitArtifact,
   syncArtifacts,
   updateTask
@@ -139,6 +140,17 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       inputSchema: { id: z.number(), result: z.enum(["pass", "fail"]), reason: z.string().optional(), operator: z.string() }
     },
     async args => json(recordQaResult(ctx, args))
+  )
+
+  server.registerTool(
+    "wb_retro",
+    {
+      description:
+        "retrospective 证据包:反馈半衰期加权提炼(skill 候选/Red Flags/观察)+ 审批吞吐报表。" +
+        "依据 evidence 起草 .claude/skills/<名称>/SKILL.md 后 register-meta + submit 送人审,approved 才生效",
+      inputSchema: { module: z.string().optional() }
+    },
+    async args => json(runRetrospective(ctx, args))
   )
 
   server.registerTool(

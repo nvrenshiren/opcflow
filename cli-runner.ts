@@ -11,6 +11,7 @@ import {
   claimTask,
   createTask,
   disputeArtifact,
+  exportEventLog,
   feedbackArtifact,
   genAgents,
   getTaskDetail,
@@ -31,6 +32,7 @@ import {
   rejectArtifact,
   removeTask,
   runProtocolLints,
+  runRetrospective,
   scanArtifacts,
   submitArtifact,
   syncArtifacts,
@@ -144,6 +146,7 @@ const HELP = `Workbench CLI
 产出   output / artifacts / scan / move / input
 信任   submit / approve / reject / feedback / queue / dispute / sync
 流程   plan / qa / audit / intake / lint / graph / events
+进化   retro [--module= --json=] / export
 维护   init / gen-agents / register-meta / install-hooks / migrate`
 
 /** 主分发(抛错由入口捕获) */
@@ -286,6 +289,38 @@ export async function runCommand(ctx: Ctx, command: string, a: Record<string, an
       const s = intakeIssues(ctx)
       console.log(chalk.green(`✅ intake:拉取 ${s.fetched},新建 ${s.created.length},已关联跳过 ${s.skipped}`))
       for (const c of s.created) console.log(chalk.cyan(`  gh#${c.issue} → 任务 #${c.taskId} (${c.lane === "hotfix" ? "快车道 hotfix" : "PM 分析"})`))
+      break
+    }
+    case "retro":
+    case "retrospective": {
+      const report = runRetrospective(ctx, { module: a.module })
+      if (a.json === "true") return void console.log(JSON.stringify(report, null, 2))
+      const BUCKET_TEXT: Record<string, string> = {
+        "skill-candidate": chalk.green("🌱 skill 候选"),
+        "red-flag": chalk.red("🚩 Red Flag"),
+        observation: chalk.gray("👀 观察")
+      }
+      console.log(chalk.bold(`\n═══ Retrospective${report.module ? `(模块 ${report.module})` : ""} ═══  半衰期 ${report.halfLifeDays} 天\n`))
+      if (report.groups.length === 0) console.log(chalk.yellow("  尚无反馈数据"))
+      for (const g of report.groups) {
+        const reason = g.reason === "mixed" ? "(信号矛盾)" : g.reason === "insufficient" ? "(样本不足)" : ""
+        console.log(`  ${BUCKET_TEXT[g.bucket]}${reason} [${g.endpoint}/${g.kind}]  +${g.posScore} / -${g.negScore}(${g.evidence.length} 条反馈)`)
+        for (const e of g.evidence.filter(e => e.verdict === -1 && e.comment)) {
+          console.log(chalk.red(`      👎 ${e.comment}  (${e.path})`))
+        }
+      }
+      const ap = report.approval
+      console.log(chalk.bold(`\n  审批吞吐:`) + ` 通过 ${ap.approved},打回 ${ap.rejected}` +
+        `${ap.rejectionRate !== null ? `,打回率 ${Math.round(ap.rejectionRate * 100)}%` : ""}` +
+        `${ap.avgApprovalHours !== null ? `,送审→通过平均 ${ap.avgApprovalHours} 小时` : ""}`)
+      console.log(chalk.bold(`\n  下一步:`))
+      for (const gd of report.guidance) console.log(chalk.cyan(`    → ${gd}`))
+      console.log()
+      break
+    }
+    case "export": {
+      const r = exportEventLog(ctx)
+      console.log(chalk.green(`✅ 已导出 events ${r.events} 条,feedback ${r.feedbacks} 条 → ${r.files.join(", ")}`))
       break
     }
     case "lint": {

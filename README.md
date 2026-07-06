@@ -13,6 +13,7 @@
 - **双车道**:标准道(全流程)+ 快车道 hotfix(登记义务不豁免)
 - **变更传播**:sync 对账 → 失效 → 沿图派 review(去重)
 - **QA 闭环**:fail → 自动 rework → 自动复验,不消耗人
+- **反馈进化**:👍👎 与 QA verdict 半衰期加权提炼 → skill 候选 / Red Flags,草稿走人审;审批吞吐被度量
 - **协议 lint**:能机器查的约定降级为 gate 卡点
 - **可视化工作台**:树 + markdown/mermaid/原型/代码渲染 + 待审队列 diff + SSE 实时
 - **AI 接入**:5 个 agent 定义(模板生成)+ MCP typed tools + Claude Code hooks
