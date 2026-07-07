@@ -1,0 +1,131 @@
+/* Workbench 全局样式:滚动条 / 选区 / 数字对齐 / md 阅读排版 / 交互反馈 */
+
+:root {
+  --wb-mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  --wb-line: #26272d;
+  --wb-raised: #1d1e23;
+  --wb-accent: #2fbdaf;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2e2f36 transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2f36;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(47, 189, 175, 0.32);
+}
+
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-mono {
+  font-family: var(--wb-mono);
+  font-size: 12px;
+}
+
+/* ─── 交互反馈:行悬浮 / 树节点 ─────────────────────────── */
+.wb-hover-row {
+  transition: background 0.18s ease;
+  border-radius: 8px;
+}
+.wb-hover-row:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ant-tree .ant-tree-node-content-wrapper {
+  border-radius: 6px;
+  transition: background 0.18s ease;
+}
+
+/* ─── markdown 阅读排版(契约审阅的主战场)──────────────── */
+.wb-md {
+  font-size: 14px;
+  line-height: 1.75;
+  max-width: 860px;
+  color: rgba(255, 255, 255, 0.82);
+}
+.wb-md h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  line-height: 1.3;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--wb-line);
+}
+.wb-md h2 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  margin-top: 30px;
+}
+.wb-md h3 {
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-top: 22px;
+}
+.wb-md blockquote {
+  margin: 14px 0;
+  padding: 8px 14px;
+  border-left: 3px solid rgba(47, 189, 175, 0.45);
+  background: var(--wb-raised);
+  border-radius: 0 6px 6px 0;
+  color: rgba(255, 255, 255, 0.52);
+}
+.wb-md blockquote p {
+  margin: 4px 0;
+}
+.wb-md code {
+  font-family: var(--wb-mono);
+  font-size: 12px;
+  background: #232429;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.wb-md pre code {
+  display: block;
+  padding: 12px;
+  overflow: auto;
+  border-radius: 8px;
+}
+.wb-md table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 14px 0;
+  font-size: 13px;
+}
+.wb-md th {
+  border: 1px solid var(--wb-line);
+  background: var(--wb-raised);
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 600;
+}
+.wb-md td {
+  border: 1px solid var(--wb-line);
+  padding: 6px 10px;
+}
+.wb-md hr {
+  border: none;
+  border-top: 1px solid var(--wb-line);
+  margin: 24px 0;
+}
+.wb-md ul,
+.wb-md ol {
+  padding-left: 22px;
+}
+.wb-md li {
+  margin: 3px 0;
+}

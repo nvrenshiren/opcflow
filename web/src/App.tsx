@@ -1,8 +1,9 @@
-import { Badge, Button, Layout, Space, Switch, Tag, Tree, Typography, message } from "antd"
+import { Badge, Button, Layout, Space, Switch, Tooltip, Tree, Typography, message } from "antd"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, type TreeNode, type WbEvent } from "./api"
 import { NodePanel } from "./NodePanel"
 import { ReviewQueue } from "./ReviewQueue"
+import { ACCENT, MONO, SURFACE } from "./ui"
 
 const HEALTH_COLOR: Record<string, string> = {
   ok: "#52c41a",
@@ -24,20 +25,39 @@ function toAntNode(n: TreeNode): AntNode {
     key: n.key,
     node: n,
     title: (
-      <Space size={6}>
-        <Badge color={HEALTH_COLOR[n.health]} />
-        <span>{n.title}</span>
-        {done && (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {done}
-          </Typography.Text>
-        )}
-        {n.health !== "ok" && (
-          <Tag color={HEALTH_COLOR[n.health]} style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px" }}>
-            {n.health}
-          </Tag>
-        )}
-      </Space>
+      <span style={{ display: "flex", alignItems: "center", gap: 7, paddingRight: 4 }}>
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            flexShrink: 0,
+            background: HEALTH_COLOR[n.health],
+            boxShadow: n.health !== "ok" ? `0 0 6px ${HEALTH_COLOR[n.health]}` : "none"
+          }}
+        />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+        <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {n.health !== "ok" && (
+            <span style={{ fontSize: 10, color: HEALTH_COLOR[n.health] }}>{n.health}</span>
+          )}
+          {done && (
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: MONO,
+                color: "rgba(255,255,255,0.38)",
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: 8,
+                padding: "0 6px",
+                lineHeight: "16px"
+              }}
+            >
+              {done}
+            </span>
+          )}
+        </span>
+      </span>
     ),
     children: n.children.length > 0 ? n.children.map(toAntNode) : undefined
   }
@@ -87,39 +107,76 @@ export default function App() {
 
   return (
     <Layout style={{ height: "100%" }}>
-      <Layout.Sider width={340} theme="light" style={{ borderRight: "1px solid #303030", overflow: "auto" }}>
-        <div style={{ padding: "10px 12px", borderBottom: "1px solid #303030", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography.Text strong>Workbench</Typography.Text>
-          <Space size={4}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              元产物
-            </Typography.Text>
-            <Switch size="small" checked={includeMeta} onChange={setIncludeMeta} />
-          </Space>
-        </div>
-        <div style={{ padding: "8px 12px", borderBottom: "1px solid #303030" }}>
-          <Space>
-            <Badge count={queueCount} size="small">
-              <Button size="small" onClick={() => setQueueOpen(true)}>
-                待审队列
-              </Button>
-            </Badge>
-            <Button size="small" onClick={runSync}>
-              Sync 对账
+      <Layout.Header
+        style={{
+          height: 52,
+          lineHeight: "52px",
+          padding: "0 20px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: `linear-gradient(180deg, ${SURFACE.raised} 0%, ${SURFACE.panel} 100%)`,
+          borderBottom: `1px solid ${SURFACE.line}`
+        }}
+      >
+        <svg width="22" height="22" viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
+          <rect width="32" height="32" rx="7" fill={SURFACE.canvas} />
+          <path
+            d="M8 10l3.2 12L16 12l4.8 10L24 10"
+            stroke={ACCENT}
+            strokeWidth="2.6"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <Typography.Text strong style={{ fontSize: 15, letterSpacing: -0.2 }}>
+          Workbench
+        </Typography.Text>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          spec-anchored 执行层
+        </Typography.Text>
+        <span style={{ flex: 1 }} />
+        <Space size={16}>
+          <Tooltip title="在树中显示 agent 定义 / skill / PLAN 等元产物">
+            <Space size={6}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                元产物
+              </Typography.Text>
+              <Switch size="small" checked={includeMeta} onChange={setIncludeMeta} />
+            </Space>
+          </Tooltip>
+          <Button size="small" onClick={runSync}>
+            Sync 对账
+          </Button>
+          <Badge count={queueCount} size="small" offset={[-2, 2]}>
+            <Button size="small" type="primary" onClick={() => setQueueOpen(true)}>
+              待审队列
             </Button>
-          </Space>
-        </div>
-        <Tree
-          treeData={antTree}
-          defaultExpandedKeys={["__root__"]}
-          onSelect={(_, info) => setSelected((info.node as unknown as AntNode).node)}
-          style={{ padding: 8 }}
-          blockNode
-        />
-      </Layout.Sider>
-      <Layout.Content style={{ overflow: "auto", background: "#141414" }}>
-        <NodePanel node={selected} liveEvents={liveEvents} />
-      </Layout.Content>
+          </Badge>
+        </Space>
+      </Layout.Header>
+      <Layout style={{ flex: 1, minHeight: 0 }}>
+        <Layout.Sider
+          width={312}
+          theme="light"
+          style={{ borderRight: `1px solid ${SURFACE.line}`, overflow: "auto", background: SURFACE.panel }}
+        >
+          <div style={{ padding: "10px 12px 4px", fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.35)" }}>
+            项目结构
+          </div>
+          <Tree
+            treeData={antTree}
+            defaultExpandedKeys={["__root__"]}
+            onSelect={(_, info) => setSelected((info.node as unknown as AntNode).node)}
+            style={{ padding: "0 8px 12px", background: "transparent" }}
+            blockNode
+          />
+        </Layout.Sider>
+        <Layout.Content style={{ overflow: "auto", background: SURFACE.canvas }}>
+          <NodePanel node={selected} liveEvents={liveEvents} onOpenQueue={() => setQueueOpen(true)} queueCount={queueCount} />
+        </Layout.Content>
+      </Layout>
       <ReviewQueue open={queueOpen} onClose={() => setQueueOpen(false)} onActed={() => loadTree(includeMeta)} />
     </Layout>
   )

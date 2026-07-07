@@ -1,10 +1,11 @@
 import Editor from "@monaco-editor/react"
-import { Alert, Button, Input, List, Modal, Radio, Space, Spin, Tag, Typography, message } from "antd"
+import { Alert, Button, Input, List, Modal, Radio, Skeleton, Space, Tag, Typography, message } from "antd"
 import mermaid from "mermaid"
 import { useEffect, useId, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { api, type Artifact, type ArtifactDetail } from "../api"
+import { MONO, SURFACE } from "../ui"
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" })
 
@@ -46,7 +47,7 @@ function Mermaid({ code }: { code: string }) {
 
 export function MarkdownView({ content }: { content: string }) {
   return (
-    <div style={{ maxWidth: 900, lineHeight: 1.7 }}>
+    <div className="wb-md">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -58,14 +59,7 @@ export function MarkdownView({ content }: { content: string }) {
                 {children}
               </code>
             )
-          },
-          table: ({ children }) => (
-            <table style={{ borderCollapse: "collapse", width: "100%" }} className="wb-md-table">
-              {children}
-            </table>
-          ),
-          th: ({ children }) => <th style={{ border: "1px solid #424242", padding: "6px 10px", background: "#1f1f1f" }}>{children}</th>,
-          td: ({ children }) => <td style={{ border: "1px solid #424242", padding: "6px 10px" }}>{children}</td>
+          }
         }}
       >
         {content}
@@ -92,11 +86,11 @@ function PrototypeView({ artifact }: { artifact: Artifact }) {
         onChange={e => setWidth(e.target.value)}
         style={{ marginBottom: 12 }}
       />
-      <div style={{ background: "#262626", padding: 16, display: "flex", justifyContent: "center" }}>
+      <div style={{ background: SURFACE.raised, padding: 16, display: "flex", justifyContent: "center", borderRadius: 10 }}>
         <iframe
           src={api.rawUrl(artifact.id)}
           sandbox="allow-scripts"
-          style={{ width, height: "70vh", border: "1px solid #424242", background: "#fff" }}
+          style={{ width, height: "70vh", border: `1px solid ${SURFACE.lineStrong}`, borderRadius: 6, background: "#fff" }}
           title={artifact.path}
         />
       </div>
@@ -125,14 +119,20 @@ function CodeDirView({ artifact }: { artifact: Artifact }) {
     <div style={{ display: "flex", gap: 12, height: "72vh" }}>
       <List
         size="small"
-        style={{ width: 300, overflow: "auto", borderRight: "1px solid #303030" }}
+        split={false}
+        style={{ width: 300, overflow: "auto", borderRight: `1px solid ${SURFACE.line}` }}
         dataSource={files}
         renderItem={f => (
           <List.Item
-            style={{ cursor: "pointer", background: f.rel === selected ? "rgba(22,119,255,0.25)" : undefined, paddingLeft: 8 }}
+            className="wb-hover-row"
+            style={{
+              cursor: "pointer",
+              background: f.rel === selected ? "rgba(47,189,175,0.14)" : undefined,
+              padding: "5px 10px"
+            }}
             onClick={() => setSelected(f.rel)}
           >
-            <Typography.Text style={{ fontSize: 12 }}>{f.rel}</Typography.Text>
+            <Typography.Text style={{ fontSize: 12, fontFamily: MONO }}>{f.rel}</Typography.Text>
           </List.Item>
         )}
       />
@@ -211,7 +211,7 @@ export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
     api.artifact(artifact.id).then(setDetail)
   }, [artifact.id, reloadKey])
 
-  if (!detail) return <Spin style={{ display: "block", margin: "80px auto" }} />
+  if (!detail) return <Skeleton active paragraph={{ rows: 8 }} style={{ padding: "12px 4px" }} />
   if (detail.missing) return <Alert type="warning" message={`文件已不在磁盘上: ${artifact.path}`} />
 
   let body: React.ReactNode
@@ -236,8 +236,14 @@ export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
   return (
     <div>
       <Space style={{ marginBottom: 12 }} wrap>
-        <Tag>hash {artifact.content_hash.slice(0, 8)}</Tag>
-        {artifact.approved_hash && <Tag color="green">approved {artifact.approved_hash.slice(0, 8)}</Tag>}
+        <Tag bordered={false} style={{ fontFamily: MONO, fontSize: 11 }}>
+          hash {artifact.content_hash.slice(0, 8)}
+        </Tag>
+        {artifact.approved_hash && (
+          <Tag bordered={false} color="green" style={{ fontFamily: MONO, fontSize: 11 }}>
+            approved {artifact.approved_hash.slice(0, 8)}
+          </Tag>
+        )}
         {artifact.reviewed_by && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             审批人 {artifact.reviewed_by} @ {artifact.reviewed_at}

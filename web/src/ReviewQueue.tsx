@@ -1,7 +1,8 @@
-import { Alert, Button, Drawer, Empty, Input, List, Modal, Segmented, Space, Tag, Typography, message } from "antd"
+import { Alert, Button, Drawer, Empty, Input, Modal, Segmented, Space, Tag, Typography, message } from "antd"
 import { useCallback, useEffect, useState } from "react"
 import { api, type Artifact } from "./api"
 import { MarkdownView } from "./viewers/ArtifactViewer"
+import { kindColor, MONO, SURFACE } from "./ui"
 
 function DiffView({ id, path }: { id: number; path: string }) {
   const [diff, setDiff] = useState<{ approved: string | null; current: string | null } | null>(null)
@@ -37,7 +38,17 @@ function DiffView({ id, path }: { id: number; path: string }) {
     return (
       <div style={fill}>
         {toggle}
-        <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid #303030", borderRadius: 4, padding: "8px 16px" }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: "auto",
+            border: `1px solid ${SURFACE.line}`,
+            borderRadius: 10,
+            padding: "12px 20px",
+            background: SURFACE.panel
+          }}
+        >
           <MarkdownView content={diff.current ?? "(空)"} />
         </div>
       </div>
@@ -83,10 +94,12 @@ function DiffView({ id, path }: { id: number; path: string }) {
 
 const paneStyle: React.CSSProperties = {
   fontSize: 12,
+  fontFamily: MONO,
   lineHeight: "18px",
-  background: "#1f1f1f",
-  padding: 8,
+  background: SURFACE.raised,
+  padding: 10,
   margin: 0,
+  borderRadius: 8,
   overflow: "auto",
   whiteSpace: "pre-wrap",
   wordBreak: "break-all"
@@ -121,32 +134,64 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
   }
 
   return (
-    <Drawer open={open} onClose={onClose} width="82%" title={`待审队列 (${queue.length})`} destroyOnHidden>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      width="82%"
+      title={
+        <Space size={8}>
+          <span>待审队列</span>
+          <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+            {queue.length} 份等待裁决
+          </Typography.Text>
+        </Space>
+      }
+      destroyOnHidden
+    >
       {queue.length === 0 ? (
-        <Empty description="没有待审产物" />
+        <Empty description="队列已清空,没有待审产物" />
       ) : (
         <div style={{ display: "flex", gap: 16, height: "100%" }}>
-          <List
-            style={{ width: 360, overflow: "auto", borderRight: "1px solid #f0f0f0", paddingRight: 8 }}
-            size="small"
-            dataSource={queue}
-            renderItem={a => (
-              <List.Item
-                style={{ cursor: "pointer", background: active?.id === a.id ? "rgba(22,119,255,0.25)" : undefined }}
-                onClick={() => setActive(a)}
-              >
-                <Space direction="vertical" size={0}>
-                  <Space size={4}>
-                    <Tag>{a.kind}</Tag>
-                    <Tag color={a.review_status === "invalidated" ? "red" : "gold"}>
+          <div style={{ width: 330, overflow: "auto", paddingRight: 4, flexShrink: 0 }}>
+            {queue.map(a => {
+              const isActive = active?.id === a.id
+              const idx = a.path.lastIndexOf("/")
+              const dir = idx >= 0 ? a.path.slice(0, idx + 1) : ""
+              const file = idx >= 0 ? a.path.slice(idx + 1) : a.path
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => setActive(a)}
+                  style={{
+                    cursor: "pointer",
+                    padding: "10px 12px",
+                    marginBottom: 8,
+                    borderRadius: 10,
+                    border: `1px solid ${isActive ? "rgba(47,189,175,0.55)" : SURFACE.line}`,
+                    background: isActive ? "rgba(47,189,175,0.08)" : SURFACE.panel,
+                    transition: "border-color .18s ease, background .18s ease"
+                  }}
+                >
+                  <Space size={4} style={{ marginBottom: 4 }}>
+                    <Tag bordered={false} color={kindColor(a.kind)} style={{ margin: 0 }}>
+                      {a.kind}
+                    </Tag>
+                    <Tag
+                      bordered={false}
+                      color={a.review_status === "invalidated" ? "red" : "gold"}
+                      style={{ margin: 0 }}
+                    >
                       {a.review_status === "invalidated" ? "已失效" : a.ever_approved ? "复审中" : "待审"}
                     </Tag>
                   </Space>
-                  <Typography.Text style={{ fontSize: 12 }}>{a.path}</Typography.Text>
-                </Space>
-              </List.Item>
-            )}
-          />
+                  <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.5, wordBreak: "break-all" }}>
+                    <span style={{ color: "rgba(255,255,255,0.35)" }}>{dir}</span>
+                    <span style={{ color: "rgba(255,255,255,0.88)", fontWeight: 500 }}>{file}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             {active && (
               <>
