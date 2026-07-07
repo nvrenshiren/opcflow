@@ -30,11 +30,14 @@ function DiffView({ id, path }: { id: number; path: string }) {
     />
   ) : null
 
+  // 统一为纵向 flex 填满可用高度:工具条固定,内容区 flex:1 内部滚动
+  const fill: React.CSSProperties = { height: "100%", display: "flex", flexDirection: "column" }
+
   if (isMd && mode === "preview") {
     return (
-      <div>
+      <div style={fill}>
         {toggle}
-        <div style={{ maxHeight: "62vh", overflow: "auto", border: "1px solid #303030", borderRadius: 4, padding: "8px 16px" }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", border: "1px solid #303030", borderRadius: 4, padding: "8px 16px" }}>
           <MarkdownView content={diff.current ?? "(空)"} />
         </div>
       </div>
@@ -43,17 +46,17 @@ function DiffView({ id, path }: { id: number; path: string }) {
 
   if (diff.approved === null) {
     return (
-      <div>
+      <div style={fill}>
         {toggle}
         <Alert type="info" message="首次送审,无已批版本可比对——展示当前全文" style={{ marginBottom: 8 }} showIcon />
-        <pre style={paneStyle}>{diff.current ?? "(空)"}</pre>
+        <pre style={{ ...paneStyle, flex: 1, minHeight: 0 }}>{diff.current ?? "(空)"}</pre>
       </div>
     )
   }
   const approvedLines = new Set(diff.approved.split("\n"))
   const currentLines = new Set((diff.current ?? "").split("\n"))
   const render = (text: string, other: Set<string>, color: string) => (
-    <pre style={paneStyle}>
+    <pre style={{ ...paneStyle, flex: 1, minHeight: 0 }}>
       {text.split("\n").map((line, i) => (
         <div key={i} style={{ background: other.has(line) ? undefined : color, minHeight: 18 }}>
           {line || " "}
@@ -62,14 +65,14 @@ function DiffView({ id, path }: { id: number; path: string }) {
     </pre>
   )
   return (
-    <div>
+    <div style={fill}>
       {toggle}
-      <div style={{ display: "flex", gap: 8 }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <Typography.Text type="secondary">已批版本</Typography.Text>
           {render(diff.approved, currentLines, "rgba(255,77,79,0.22)")}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <Typography.Text type="secondary">当前版本</Typography.Text>
           {render(diff.current ?? "", approvedLines, "rgba(82,196,26,0.22)")}
         </div>
@@ -83,7 +86,7 @@ const paneStyle: React.CSSProperties = {
   lineHeight: "18px",
   background: "#1f1f1f",
   padding: 8,
-  maxHeight: "55vh",
+  margin: 0,
   overflow: "auto",
   whiteSpace: "pre-wrap",
   wordBreak: "break-all"
@@ -144,10 +147,10 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
               </List.Item>
             )}
           />
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             {active && (
               <>
-                <Space style={{ marginBottom: 12 }}>
+                <Space style={{ marginBottom: 12, flexShrink: 0 }}>
                   <Button type="primary" onClick={() => act(() => api.approve(active.id), "已审批通过")}>
                     通过
                   </Button>
@@ -161,7 +164,9 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
                     <Button onClick={() => act(() => api.submit(active.id), "已重新送审")}>重新送审</Button>
                   )}
                 </Space>
-                <DiffView id={active.id} path={active.path} />
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <DiffView id={active.id} path={active.path} />
+                </div>
               </>
             )}
           </div>
