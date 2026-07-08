@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 讨论 / 提问
+    url: https://github.com/nvrenshiren/opcflow/discussions
+    about: 使用疑问、想法交流、求助请走 Discussions,而不是开 Issue

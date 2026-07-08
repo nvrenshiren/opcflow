@@ -1,0 +1,67 @@
+name: Bug 报告
+description: 报告一个可复现的问题
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈!请尽量提供可复现的信息,能大幅加快定位。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 问题描述
+      description: 发生了什么?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 一步步怎么触发的(附上执行的命令)
+      placeholder: |
+        1. 执行 `npx -y @whzhuke/opcflow ...`
+        2. ...
+        3. 看到报错 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: opcflow 版本
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 目标平台
+      description: 涉及哪个(些)平台
+      multiple: true
+      options:
+        - claude
+        - codex
+        - opencode
+        - cursor
+        - 不涉及具体平台 / 引擎本身
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      description: Node 版本 + 操作系统
+      placeholder: "Node 22.x / Windows 11(或 macOS 14 / Ubuntu 24.04)"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 报错 / 日志
+      description: 相关报错栈或日志(会自动按代码块渲染)
+      render: shell
