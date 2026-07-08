@@ -115,31 +115,111 @@ function printTaskDetail(ctx: Ctx, id: number) {
   console.log()
 }
 
-/** init 特例:在 config 存在之前运行,不开常规 ctx */
-export function runInit(root: string, a: Record<string, any>): void {
-  if (!a.endpoints) {
-    console.log(chalk.red("错误: 需要 --endpoints=service,admin,..."))
-    process.exit(1)
+const ALL_PLATFORMS = ["claude", "codex", "opencode", "cursor"]
+
+/** models.dev:拉取支持 tool_call 的模型清单(provider/model 串),失败返回空 */
+async function fetchToolCallModels(): Promise<string[]> {
+  try {
+    const res = await fetch("https://models.dev/api.json")
+    const j = (await res.json()) as Record<string, { models?: Record<string, { tool_call?: boolean }> }>
+    const out: string[] = []
+    for (const [p, v] of Object.entries(j))
+      for (const [m, mv] of Object.entries(v.models ?? {})) if (mv.tool_call) out.push(`${p}/${m}`)
+    return [...new Set(out)].sort()
+  } catch {
+    return []
   }
-  const platforms = a.platforms
-    ? String(a.platforms).split(",").map((s: string) => s.trim()).filter(Boolean)
-    : undefined
-  let model: string | Record<string, string> | undefined
-  if (a.model) {
-    const raw = String(a.model).trim()
-    model = raw.startsWith("{") ? JSON.parse(raw) : raw
+}
+
+interface InitAnswers {
+  platforms: string[]
+  endpoints: string[]
+  model?: string | Record<string, string>
+  language: "zh" | "en"
+}
+
+/** 交互式引导:选语言 / 平台(多选)/ 端 / 模型(models.dev) */
+async function promptInit(): Promise<InitAnswers> {
+  const { createInterface } = await import("node:readline/promises")
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  const ask = async (q: string, def: string) => (await rl.question(q)).trim() || def
+  try {
+    console.log(chalk.bold("\n═══ workbench init ═══\n"))
+    console.log("① 语言 / Language:  1) 中文   2) English")
+    const language = (await ask("   > [1] ", "1")).startsWith("2") ? "en" : "zh"
+
+    console.log(`\n② 平台 / Platforms(空格分隔多选;可选: ${ALL_PLATFORMS.join(" ")})`)
+    let platforms: string[] = []
+    while (!platforms.length) {
+      platforms = (await ask("   > [claude] ", "claude")).split(/[\s,]+/).filter(Boolean)
+      const bad = platforms.filter(p => !ALL_PLATFORMS.includes(p))
+      if (bad.length) {
+        console.log(chalk.red(`   未知平台: ${bad.join(", ")}`))
+        platforms = []
+      }
+    }
+
+    const endpoints = (await ask("\n③ 端 / Endpoints(逗号分隔)[service,web]: ", "service,web"))
+      .split(",").map(s => s.trim()).filter(Boolean)
+
+    console.log("\n④ 模型 / Model —— 拉取 models.dev …")
+    const models = await fetchToolCallModels()
+    if (models.length) {
+      console.log("   参考(models.dev,支持 tool_call;也可粘贴任意模型串):")
+      for (const m of models.filter(m => /^(anthropic|openai|google|xai)\//.test(m)).slice(0, 24))
+        console.log("     " + m)
+      console.log("   每个平台粘贴一个模型串,回车=该平台默认")
+    } else {
+      console.log("   (models.dev 不可用,回车用各平台默认)")
+    }
+    const modelObj: Record<string, string> = {}
+    for (const p of platforms) {
+      const m = await ask(`   ${p} model(回车=默认): `, "")
+      if (m) modelObj[p] = m
+    }
+    return { platforms, endpoints, model: Object.keys(modelObj).length ? modelObj : undefined, language }
+  } finally {
+    rl.close()
+  }
+}
+
+/** init 特例:在 config 存在之前运行,不开常规 ctx。无 flags 且在终端时进交互 */
+export async function runInit(root: string, a: Record<string, any>): Promise<void> {
+  let opts: {
+    endpoints: string[]
+    platforms?: string[]
+    model?: string | Record<string, string>
+    language?: "zh" | "en"
+  }
+  if (!a.platforms && !a.endpoints && process.stdin.isTTY) {
+    const p = await promptInit()
+    opts = { endpoints: p.endpoints, platforms: p.platforms, model: p.model, language: p.language }
+  } else {
+    if (!a.endpoints) {
+      console.log(chalk.red("错误: 需要 --endpoints=service,admin,...(或在终端直接运行 init 进入交互)"))
+      process.exit(1)
+    }
+    const platforms = a.platforms
+      ? String(a.platforms).split(",").map((s: string) => s.trim()).filter(Boolean)
+      : undefined
+    let model: string | Record<string, string> | undefined
+    if (a.model) {
+      const raw = String(a.model).trim()
+      model = raw.startsWith("{") ? JSON.parse(raw) : raw
+    }
+    const language = a.language === "en" ? "en" : a.language === "zh" ? "zh" : undefined
+    opts = { endpoints: String(a.endpoints).split(","), platforms, model, language }
   }
   const r = initProject(root, {
-    endpoints: String(a.endpoints).split(","),
+    ...opts,
     gitHooks: a.hooks !== "false",
     preset: a.preset !== "false",
-    platforms,
-    model,
     writeHooks: a.writehooks !== "false"
   })
   const cli = r.ctx.config.cli
   console.log(chalk.green(`\n✅ 项目引导完成\n`))
   console.log(`  配置文件   ${r.configPath}`)
+  console.log(`  语言       ${r.ctx.config.language}`)
   console.log(`  目标平台   ${r.platforms.join(", ")}`)
   console.log(`  文档骨架   ${r.scaffolded.length} 个目录`)
   console.log(`  预置文件   ${r.preset.length ? r.preset.join(", ") : "无(preset/ 为空或均已存在)"}`)

@@ -10,7 +10,7 @@ import { dirname, join } from "node:path"
 import { CONFIG_FILENAME, PKG_NAME, WORKBENCH_BIN, WORKBENCH_DIR } from "../config"
 import { openWorkbenchAt } from "../db"
 import { type McpServer, resolvePlatforms } from "../platforms"
-import type { Ctx, Role } from "../types"
+import type { Ctx, Language, Role } from "../types"
 import { genAgents } from "./gen-agents.command"
 import { installGitHooks } from "./install-hooks.command"
 import { registerMetaArtifacts } from "./meta.command"
@@ -34,6 +34,8 @@ export interface InitOptions {
   platforms?: string[]
   /** 各平台模型(字符串或 {platform: model});缺省用各 adapter 默认 */
   model?: string | Record<string, string>
+  /** agent 生成语言 + 工作台 UI 语言(默认 zh) */
+  language?: Language
   /** 是否自动接线各平台 hooks(写门禁 + 刷新,observe 模式;默认 true) */
   writeHooks?: boolean
 }
@@ -157,6 +159,7 @@ export function initProject(root: string, opts: InitOptions): InitResult {
     gates: { approvalMode: "warn", writeGate: "observe" },
     git: { taskTrailer: "off", trailerKey: "Task" },
     platforms: opts.platforms && opts.platforms.length ? opts.platforms : ["claude"],
+    language: opts.language ?? "zh",
     ...(opts.model ? { model: opts.model } : {})
   }
   writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n")

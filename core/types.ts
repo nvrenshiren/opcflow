@@ -2,6 +2,9 @@ import type Database from "better-sqlite3"
 
 export type Role = "product-manager" | "architect" | "designer" | "developer" | "qa"
 
+/** agent 生成语言 + 工作台 UI 语言 */
+export type Language = "zh" | "en"
+
 export type TaskType = "build" | "review" | "qa" | "hotfix" | "baseline" | "legacy" | "rework"
 
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled"
@@ -120,6 +123,8 @@ export interface WorkbenchConfig {
   platforms: string[]
   /** 各平台模型:字符串(全平台同款)或 {platform: model};缺省用各 adapter 默认 */
   model?: string | Record<string, string>
+  /** agent 生成语言 + 工作台 UI 语言(缺省 zh) */
+  language: Language
 }
 
 /** 一切 core 操作的执行上下文:项目根 + 配置 + 打开的库 */

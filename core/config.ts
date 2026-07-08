@@ -53,7 +53,8 @@ const DEFAULTS: WorkbenchConfig = {
     developer: ["code"],
     qa: ["acceptance"]
   },
-  platforms: ["claude"]
+  platforms: ["claude"],
+  language: "zh"
 }
 
 /** 自 from 向上寻找 workbench.config.json 所在目录;找不到则返回 from 本身 */

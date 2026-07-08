@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, describe, it } from "node:test"
@@ -62,12 +62,17 @@ describe("agent 模板零宿主残留(通用性)", () => {
     assert.ok(dev.includes("service / web"), "ENDPOINTS 注入缺失")
   })
 
-  it("模板源文件本身也不含金丝雀(防 token 之外的硬编码)", () => {
-    const dir = join(import.meta.dirname, "../templates/agents")
-    for (const name of readdirSync(dir).filter(n => n.endsWith(".md"))) {
-      const content = readFileSync(join(dir, name), "utf-8").toLowerCase()
-      for (const canary of HOST_RESIDUE_CANARIES) {
-        assert.ok(!content.includes(canary.toLowerCase()), `模板 ${name} 含宿主残留 "${canary}"`)
+  it("模板源文件本身也不含金丝雀(防 token 之外的硬编码;含 zh/en 各语言)", () => {
+    const base = join(import.meta.dirname, "../templates/agents")
+    const langs = readdirSync(base).filter(d => statSync(join(base, d)).isDirectory())
+    assert.ok(langs.includes("zh") && langs.includes("en"), "应有 zh/en 两套模板")
+    for (const lang of langs) {
+      const dir = join(base, lang)
+      for (const name of readdirSync(dir).filter(n => n.endsWith(".md"))) {
+        const content = readFileSync(join(dir, name), "utf-8").toLowerCase()
+        for (const canary of HOST_RESIDUE_CANARIES) {
+          assert.ok(!content.includes(canary.toLowerCase()), `模板 ${lang}/${name} 含宿主残留 "${canary}"`)
+        }
       }
     }
   })

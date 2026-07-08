@@ -16,7 +16,7 @@ async function main() {
   const { command, a } = parseArgs(process.argv.slice(2))
 
   if (command === "init") {
-    runInit(a.project || process.cwd(), a)
+    await runInit(a.project || process.cwd(), a)
     return
   }
 
