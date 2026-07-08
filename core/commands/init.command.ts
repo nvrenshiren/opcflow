@@ -7,7 +7,7 @@ import {
   writeFileSync
 } from "node:fs"
 import { dirname, join } from "node:path"
-import { CONFIG_FILENAME, workbenchRelPath } from "../config"
+import { CONFIG_FILENAME, PKG_NAME, WORKBENCH_BIN, WORKBENCH_DIR } from "../config"
 import { openWorkbenchAt } from "../db"
 import { type McpServer, resolvePlatforms } from "../platforms"
 import type { Ctx, Role } from "../types"
@@ -67,7 +67,7 @@ const DOC_DIRS = [
 ]
 
 /** 引擎内预置文件目录:init 时整目录部署到项目根(见 deployPreset) */
-const PRESET_DIR = join(import.meta.dirname, "..", "..", "preset")
+const PRESET_DIR = join(WORKBENCH_DIR, "preset")
 
 /**
  * 递归把 preset/ 下所有文件(含 dotfiles / 子目录,保留相对结构)部署到项目根。
@@ -149,7 +149,7 @@ export function initProject(root: string, opts: InitOptions): InitResult {
       acceptance: "docs/acceptance"
     },
     codeRoots: opts.codeRoots ?? {},
-    cli: `npx tsx ${workbenchRelPath(root, "cli.ts")}`,
+    cli: WORKBENCH_BIN,
     machineChecks: { enabled: false },
     protocolLints: [],
     moduleMapping: {},
@@ -184,15 +184,15 @@ export function initProject(root: string, opts: InitOptions): InitResult {
   const server: McpServer = {
     name: "workbench",
     command: "npx",
-    args: ["tsx", workbenchRelPath(root, "server/mcp.ts")]
+    args: ["-y", PKG_NAME, "mcp"]
   }
   const mcpPaths: string[] = []
   if (opts.mcp !== false) for (const a of adapters) mcpPaths.push(a.writeMcp(root, server))
 
   const hookPaths: string[] = []
   if (opts.writeHooks !== false) {
-    const preBase = `npx tsx ${workbenchRelPath(root, "scripts/hook-pretooluse.ts")}`
-    const postBase = `npx tsx ${workbenchRelPath(root, "scripts/hook-refresh.ts")}`
+    const preBase = `${WORKBENCH_BIN} hook pre`
+    const postBase = `${WORKBENCH_BIN} hook post`
     for (const a of adapters)
       hookPaths.push(
         ...a.writeHooks(root, {

@@ -13,6 +13,7 @@ import {
 } from "../core/commands/artifact.commands"
 import { runRetrospective } from "../core/commands/retro.command"
 import { syncArtifacts } from "../core/commands/sync.command"
+import { WORKBENCH_DIR } from "../core/config"
 import { claimTask, updateTask } from "../core/commands/task.commands"
 import { everApproved, prototypeEndorsed } from "../core/derive"
 import { listEvents } from "../core/events"
@@ -44,7 +45,7 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
   await app.register(fastifyCors, { origin: true })
 
-  const webDist = join(import.meta.dirname, "../web/dist")
+  const webDist = join(WORKBENCH_DIR, "web/dist")
   if (existsSync(webDist)) {
     await app.register(fastifyStatic, { root: webDist })
   }

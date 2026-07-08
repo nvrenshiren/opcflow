@@ -1,18 +1,31 @@
 {
   "name": "@whzhuke/workbench",
   "version": "0.1.0",
-  "private": true,
-  "description": "AI workflow engine: artifact DAG, trust gates, event stream, workbench",
+  "description": "Spec-anchored, drift-enforced execution layer for AI coding agents — artifact DAG, trust gates, multi-role pipeline; generates agents/MCP/hooks for Claude Code, Codex, OpenCode & Cursor.",
+  "license": "MIT",
+  "author": "Dawi",
+  "homepage": "https://github.com/nvrenshiren/workbench#readme",
+  "repository": { "type": "git", "url": "https://github.com/nvrenshiren/workbench.git" },
+  "bugs": "https://github.com/nvrenshiren/workbench/issues",
+  "keywords": [
+    "ai-agents", "coding-agent", "claude-code", "codex", "opencode", "cursor",
+    "mcp", "spec-driven-development", "workflow-engine", "developer-tools"
+  ],
+  "engines": { "node": ">=22" },
+  "bin": {
+    "workbench": "dist/cli.mjs"
+  },
+  "files": ["dist", "web/dist", "templates", "preset"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "check:isolation": "tsx scripts/check-isolation.ts",
     "web:build": "vite build",
-    "serve": "tsx server/start.ts",
-    "start": "pnpm run web:build && tsx server/start.ts"
-  },
-  "bin": {
-    "workbench": "cli.ts"
+    "build": "pnpm run web:build && node scripts/build.mjs",
+    "prepublishOnly": "pnpm run build",
+    "serve": "tsx cli.ts serve",
+    "start": "pnpm run web:build && tsx cli.ts serve"
   },
   "dependencies": {
     "@fastify/cors": "^11",
@@ -33,6 +46,7 @@
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^5",
     "antd": "^6",
+    "esbuild": "^0.28.1",
     "mermaid": "^11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

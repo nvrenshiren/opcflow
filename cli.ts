@@ -1,11 +1,15 @@
-#!/usr/bin/env npx tsx
 /**
- * Workbench CLI(独立项目入口)。
- * 用法:npx tsx workbench/cli.ts <command> [--flags]
- * init 在 config 存在前运行;其余命令走 core。
+ * Workbench CLI —— 单一 bin 承载全部子命令(发布后经 `npx -y @whzhuke/workbench <cmd>` 调用)。
+ * 项目侧不落 workbench 源码:init 生成的 config.cli / .mcp.json / hooks 全指向本 bin。
+ *   init                      新项目引导
+ *   mcp                       起 MCP server(stdio),读 --project / cwd 的 .workbench
+ *   serve [--project --port]  起 web 工作台,连接项目的 .workbench
+ *   hook pre|post --platform= agent 工具调用前后 hook(写门禁 / 刷新)
+ *   postcommit                git 提交后:scan + sync + 孤儿检测 + 导出
+ *   其余(list/plan/qa/...)   见 `help`
  */
 import { openWorkbench } from "./core/db"
-import { parseArgs, printTasks, runCommand, runInit } from "./cli-runner"
+import { parseArgs, printTasks, runInit, runCommand } from "./cli-runner"
 import { listTasks } from "./core/index"
 
 async function main() {
@@ -13,6 +17,51 @@ async function main() {
 
   if (command === "init") {
     runInit(a.project || process.cwd(), a)
+    return
+  }
+
+  if (command === "mcp") {
+    const { buildMcpServer } = await import("./server/mcp")
+    const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")
+    const ctx = openWorkbench(a.project ?? process.env.WORKBENCH_PROJECT)
+    await buildMcpServer(ctx).connect(new StdioServerTransport())
+    return
+  }
+
+  if (command === "serve") {
+    const { createServer } = await import("./server/app")
+    const ctx = openWorkbench(a.project ?? process.env.WORKBENCH_PROJECT)
+    const port = parseInt(a.port ?? process.env.WORKBENCH_PORT ?? "5620")
+    const app = await createServer(ctx)
+    await app.listen({ port, host: "127.0.0.1" })
+    console.log(`Workbench: http://127.0.0.1:${port}  (project: ${ctx.root})`)
+    return
+  }
+
+  if (command === "hook") {
+    const platform = a.platform ?? "claude"
+    if (a._ === "pre") {
+      const { writeGateHook } = await import("./scripts/hook-pretooluse")
+      await writeGateHook(platform).catch(() => {})
+    } else if (a._ === "post") {
+      const { refreshHook } = await import("./scripts/hook-refresh")
+      await refreshHook(platform).catch(() => {})
+    }
+    process.exit(0)
+  }
+
+  if (command === "postcommit") {
+    try {
+      const { scanArtifacts, syncArtifacts, detectOrphanCommit } = await import("./core/index")
+      const { exportEventLog } = await import("./core/commands/retro.command")
+      const ctx = openWorkbench(process.cwd())
+      scanArtifacts(ctx, "post-commit")
+      syncArtifacts(ctx, "post-commit")
+      detectOrphanCommit(ctx)
+      exportEventLog(ctx)
+    } catch {
+      /* observe fail-open:提交后对账绝不阻塞 */
+    }
     return
   }
 

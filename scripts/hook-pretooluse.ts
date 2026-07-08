@@ -8,8 +8,8 @@
  */
 import { extractFilePath, hookPlatform, hookProjectDir, readStdinJson } from "./hook-input"
 
-async function main() {
-  const platform = hookPlatform()
+/** 写门禁主逻辑;由 `workbench hook pre --platform=X` 或独立入口调用 */
+export async function writeGateHook(platform: string) {
   const input = await readStdinJson()
   const filePath = extractFilePath(input)
   if (!filePath) return
@@ -69,8 +69,9 @@ async function main() {
   }
 }
 
-main()
-  .catch(() => {})
-  .finally(() => process.exit(0))
-
-export {}
+// 独立入口(直接 `tsx hook-pretooluse.ts --platform=X`;编译打包后由 CLI 子命令调用)
+if (process.argv[1]?.replace(/\\/g, "/").endsWith("hook-pretooluse.ts")) {
+  writeGateHook(hookPlatform())
+    .catch(() => {})
+    .finally(() => process.exit(0))
+}

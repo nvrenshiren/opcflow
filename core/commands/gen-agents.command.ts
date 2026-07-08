@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { WORKBENCH_DIR } from "../config"
 import { getKindRegistry } from "../kind"
 import { type AgentSpec, resolveModel, resolvePlatforms } from "../platforms"
 import type { ArtifactKind, Ctx } from "../types"
@@ -87,7 +88,7 @@ function parseTemplate(rawInput: string): ParsedTemplate {
 }
 
 export function genAgents(ctx: Ctx, templatesDir?: string): GenAgentsResult {
-  const dir = templatesDir ?? join(import.meta.dirname, "../../templates/agents")
+  const dir = templatesDir ?? join(WORKBENCH_DIR, "templates/agents")
   if (!existsSync(dir)) throw new Error(`模板目录不存在: ${dir}`)
 
   const cli = ctx.config.cli

@@ -16,7 +16,7 @@ bash setup.sh          # 交互:选平台(多选)+ 选端 + 选模型(models.dev
 或直接用 CLI:
 
 ```bash
-npx tsx workbench/cli.ts init \
+npx -y @whzhuke/workbench init \
   --platforms=claude,codex,opencode,cursor \
   --endpoints=service,web \
   --model='{"codex":"gpt-5.1-codex","opencode":"anthropic/claude-opus-4-8"}'

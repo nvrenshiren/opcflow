@@ -1,13 +1,9 @@
 node_modules
+dist
 web/dist
 *.tsbuildinfo
 .DS_Store
 
-# init/gen-agents 生成的项目层产物(纯工具仓库不纳入版本库)
-.claude/
-.mcp.json
-workbench.config.json
-.workbench/
 
 # 本地测试项目(不提交)
 project/

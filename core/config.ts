@@ -1,23 +1,24 @@
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import type { WorkbenchConfig } from "./types"
 
 export const CONFIG_FILENAME = "workbench.config.json"
 
-/** workbench 包自身所在目录(不假设它叫 workbench/ 或位于项目哪一层) */
-export const WORKBENCH_DIR = resolve(join(import.meta.dirname, ".."))
+/** npm 包名 */
+export const PKG_NAME = "@whzhuke/workbench"
 
 /**
- * 从项目根指向 workbench 包内某文件的相对调用路径(正斜杠)。
- * init / install-hooks / 默认 cli 都由此生成,workbench 无论作为子目录
- * 还是仓库根都能得到正确路径(根即包目录时返回 "cli.ts" 这类裸路径)。
+ * 生成到项目里的命令前缀:统一走 npx 零安装调用已发布的包。
+ * 项目侧不再需要 workbench 源码——config.cli / .mcp.json / hooks 全指向这个 bin。
  */
-export function workbenchRelPath(root: string, ...segments: string[]): string {
-  return relative(resolve(root), join(WORKBENCH_DIR, ...segments)).replace(
-    /\\/g,
-    "/"
-  )
-}
+export const WORKBENCH_BIN = `npx -y ${PKG_NAME}`
+
+/**
+ * workbench 包根目录。源码运行时 import.meta.dirname = <pkg>/core;
+ * 编译发布后 = <pkg>/dist —— 两者都在包根下一层,统一 ".." 定位包根,
+ * templates / preset / web/dist 均由此解析,兼容 tsx 源码与编译产物两种形态。
+ */
+export const WORKBENCH_DIR = resolve(join(import.meta.dirname, ".."))
 
 const DEFAULTS: WorkbenchConfig = {
   endpoints: ["service", "admin", "weapp", "app"],
@@ -36,7 +37,7 @@ const DEFAULTS: WorkbenchConfig = {
   git: { taskTrailer: "off", trailerKey: "Task" },
   legacyDb: "tasks/task.db",
   dataDir: ".workbench",
-  cli: "npx tsx workbench/cli.ts",
+  cli: WORKBENCH_BIN,
   pipeline: ["product-manager", "architect", "designer", "developer", "qa"],
   roleProduces: {
     "product-manager": [
@@ -67,16 +68,13 @@ export function findProjectRoot(from: string = process.cwd()): string {
 }
 
 export function loadConfig(root: string): WorkbenchConfig {
-  // cli 缺省按实际布局推导,不写死 workbench/ 子目录前缀
-  const dynamicCli = `npx tsx ${workbenchRelPath(root, "cli.ts")}`
   const file = join(root, CONFIG_FILENAME)
-  if (!existsSync(file)) return { ...DEFAULTS, cli: dynamicCli }
+  if (!existsSync(file)) return { ...DEFAULTS }
   const raw = JSON.parse(
     readFileSync(file, "utf-8")
   ) as Partial<WorkbenchConfig>
   return {
     ...DEFAULTS,
-    cli: dynamicCli,
     ...raw,
     docs: { ...DEFAULTS.docs, ...raw.docs },
     gates: { ...DEFAULTS.gates, ...raw.gates },

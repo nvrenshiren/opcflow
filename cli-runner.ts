@@ -3,7 +3,6 @@
  * 调用这里的 parseArgs / runInit / runCommand。
  */
 import chalk from "chalk"
-import { workbenchRelPath } from "./core/config"
 import {
   addTaskInput,
   approveArtifact,
@@ -153,10 +152,9 @@ export function runInit(root: string, a: Record<string, any>): void {
     console.log(chalk.yellow(`\n平台提醒:`))
     for (const n of r.notes) console.log(chalk.yellow(`  • ${n}`))
   }
-  const wbDir = workbenchRelPath(root, "")
   console.log(chalk.bold(`\n下一步:`))
   console.log(`  1. 编辑 workbench.config.json 的 codeRoots(填每个端的代码目录约定)`)
-  console.log(`  2. 启动工作台:  ${wbDir ? `cd ${wbDir} && ` : ""}pnpm run serve   → http://127.0.0.1:5620`)
+  console.log(`  2. 启动工作台:  ${cli} serve   → http://127.0.0.1:5620`)
   console.log(`  3. 对 AI 提第一个需求,它走流水线产出契约,你在待审队列点头`)
   console.log(`  4. 契约审批后:  ${cli} plan --module=<模块>  一键派发\n`)
   r.ctx.db.close()

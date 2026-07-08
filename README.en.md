@@ -61,26 +61,21 @@ from contract to code to acceptance.**
 
 ## Installation
 
-Workbench lives inside your project as a "tenant" (`your-project/workbench/`), bringing its own engine
-dependencies without polluting the host.
+Workbench is an npm package — it **does not drop source into your project**. Bootstrap from your
+project root with npx, zero install:
 
 ```bash
-# 1. Put workbench/ into your project and install engine deps
-cd your-project/workbench && pnpm install && cd ..
-
-# 2. One-shot bootstrap: pick platforms (multi-select) + endpoints + model
-bash workbench/setup.sh
-#    or specify directly:
-npx tsx workbench/cli.ts init --platforms=claude,cursor --endpoints=service,web
+# In your project root: pick platforms (multi-select) + endpoints, generate in one shot
+npx -y @whzhuke/workbench init --platforms=claude,cursor --endpoints=service,web
+#   backend-only:  --endpoints=service          (auto-prunes designer, qa kept)
+#   set models:    --model='{"codex":"gpt-5.1-codex"}'  or  --model=<single string> (defaults per platform)
 ```
 
-`setup.sh` interactively selects platforms and endpoints and pulls the model list from
-[models.dev](https://models.dev) (parsed with node, no jq needed). `init` generates agent definitions,
-registers MCP, and auto-wires hooks for each chosen platform, plus `workbench.config.json`, the
-`docs/` skeleton, git hooks, and the `.workbench/` database. `--platforms` defaults to `claude`.
+It writes only **generated artifacts** — each platform's agent definitions, MCP registration, hooks,
+`workbench.config.json`, the `docs/` skeleton, and the `.workbench/` database; **no workbench source**.
+The generated MCP / hook / CLI references all point at `npx -y @whzhuke/workbench <subcommand>`, so no
+reinstall across machines or teammates. `--platforms` defaults to `claude`.
 
-> **Bare directory**: preset drops a minimal `package.json` with `tsx` so you can `npx tsx` out of the box.
-> **Backend-only project**: `--endpoints=service` auto-prunes designer (qa kept).
 > Per-platform layout, Codex trust, Cursor main-agent model, etc. — see **[PLATFORMS.md](PLATFORMS.md)**.
 
 Requires Node ≥ 22.
@@ -88,16 +83,15 @@ Requires Node ≥ 22.
 ## Quick Start
 
 1. **Fill in code-dir conventions** — edit `codeRoots` in `workbench.config.json` (each endpoint's code dir, `{module}` placeholder).
-2. **Start the workbench** (visual approval panel):
+2. **Start the workbench** (visual approval panel, connects to the project's `.workbench`):
    ```bash
-   cd workbench && pnpm start          # first run: build frontend + start server → http://127.0.0.1:5620
-   # frontend already built, just restart the backend: pnpm run serve
+   npx -y @whzhuke/workbench serve       # → http://127.0.0.1:5620 (--project sets the root, defaults to cwd)
    ```
 3. **Give the AI your first requirement** (one sentence). It runs the five-role pipeline, producing contracts layer by layer and submitting them for review.
 4. **Nod in the review queue** — view diffs in the workbench; approve / reject; thumbs-up prototypes.
 5. **Once all contracts are approved, dispatch:**
    ```bash
-   npx tsx workbench/cli.ts plan --module=<module>   # dispatch architect/designer/developer/qa tasks
+   npx -y @whzhuke/workbench plan --module=<module>   # dispatch architect/designer/developer/qa tasks
    ```
 
 Every later change is tracked: edit an approved contract → auto-invalidate → downstream stale → a
@@ -142,7 +136,7 @@ never silently deviate.
 
 ## CLI Commands & Parameters
 
-Every command: `npx tsx workbench/cli.ts <command> [args]`. Global `--project=<path>` sets the project
+Every command: `npx -y @whzhuke/workbench <command> [args]`. Global `--project=<path>` sets the project
 root (otherwise it searches upward for `workbench.config.json`). File-path arguments are separated with
 `--` (e.g. `submit --actor=x -- <path>`).
 
@@ -233,7 +227,7 @@ root (otherwise it searches upward for `workbench.config.json`). File-path argum
 
 ## Visual Workbench
 
-`pnpm start` serves at `http://127.0.0.1:5620`: the artifact tree (colors update live), markdown /
+`npx -y @whzhuke/workbench serve` serves at `http://127.0.0.1:5620`: the artifact tree (colors update live), markdown /
 mermaid / HTML-prototype iframe / code rendering, the **review-queue diff** (approved version vs.
 current), an event timeline, and live SSE refresh. Approve, reject, and thumbs-up/down prototypes right
 here.
