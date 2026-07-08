@@ -30,28 +30,28 @@ async function main() {
 
   if (command === "serve") {
     const { createServer } = await import("./server/app")
-    const { createServer: netServer } = await import("node:net")
+    const net = await import("node:net")
     const ctx = openWorkbench(a.project ?? process.env.WORKBENCH_PROJECT)
     const start = parseInt(a.port ?? process.env.WORKBENCH_PORT ?? "5620")
     const host = a.host ?? process.env.WORKBENCH_HOST ?? "0.0.0.0" // 默认对局域网开放;--host=127.0.0.1 只本机
-    // 从 start 起找一个空闲端口(5620 被占用时自动 5621、5622…),避免直接崩
-    const port = await new Promise<number>((resolve, reject) => {
-      let p = start
-      let tries = 0
-      const probe = () => {
-        const s = netServer()
-        s.once("error", (e: any) => {
-          s.close()
-          if (e?.code === "EADDRINUSE" && tries++ < 30) {
-            p++
-            probe()
-          } else reject(e)
+    // 端口占用检测:连 127.0.0.1:port,能连上=已有监听(覆盖 0.0.0.0 与 127.0.0.1 两种绑定,
+    // 绕开 Windows 上 0.0.0.0 与 127.0.0.1 可共存导致 bind 探测漏判的坑)
+    const inUse = (p: number) =>
+      new Promise<boolean>(resolve => {
+        const sock = net.connect({ port: p, host: "127.0.0.1" })
+        sock.setTimeout(400)
+        sock.once("connect", () => {
+          sock.destroy()
+          resolve(true)
         })
-        s.once("listening", () => s.close(() => resolve(p)))
-        s.listen(p, host)
-      }
-      probe()
-    })
+        sock.once("timeout", () => {
+          sock.destroy()
+          resolve(false)
+        })
+        sock.once("error", () => resolve(false))
+      })
+    let port = start
+    for (let i = 0; i < 30 && (await inUse(port)); i++) port++
     if (port !== start) console.error(`端口 ${start} 被占用,改用 ${port}`)
     const app = await createServer(ctx)
     await app.listen({ port, host })
