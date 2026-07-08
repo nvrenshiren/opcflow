@@ -11,3 +11,6 @@ workbench.config.json
 
 # 本地测试项目(不提交)
 project/
+
+# 内部开发计划(本地保留,不随工具分发)
+PLAN.md
