@@ -134,6 +134,12 @@ never silently deviate.
 | **developer** | gate: contracts in place; frontend tasks require a 👍'd prototype | code per endpoint (maintained by directory-level scan, not manually registered) | complete gate: machineChecks / protocolLints pass |
 | **qa** | two-stage: define acceptance criteria first (submit), then run after developer completes | acceptance cases (`docs/acceptance/...`), pass/fail | pass → +1 verdict on the code; **fail → auto rework → auto re-verify** until pass |
 
+> **Two ways to produce the HTML prototype**: by default the currently connected model produces it
+> directly; or hand the approved **design system** + **page design prompts** to a third-party design
+> platform (e.g. v0, Lovable) to generate the HTML, then drop the file into the matching path
+> `docs/design/prototypes/<endpoint>/<module>/<page>.html` — once `scan` registers it, it goes through
+> the usual 👍 release. Both paths are equivalent in the system; both must pass a user 👍.
+
 ## CLI Commands & Parameters
 
 Every command: `npx tsx workbench/cli.ts <command> [args]`. Global `--project=<path>` sets the project

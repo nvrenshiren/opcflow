@@ -123,6 +123,11 @@ flowchart LR
 | **developer** | gate:契约齐备;前端任务要求原型已 👍 | 各端代码(目录级 scan 维护,不手动登记) | complete 闸门:machineChecks / protocolLints 通过 |
 | **qa** | 两段式:先定验收标准(送审),developer 完成后执行 | 验收用例(`docs/acceptance/...`)、pass/fail | pass → 给 code +1 verdict;**fail → 自动 rework → 自动复验**直到 pass |
 
+> **HTML 原型的两种产出方式**:默认由当前接入的模型直接产出;也可把 approved 的**设计系统** +
+> **页面设计提示词**交给第三方设计平台(如 v0、Lovable 等)生成 HTML,再把产物文件丢到对应路径
+> `docs/design/prototypes/<端>/<模块>/<页面>.html`,`scan` 登记后照常走 👍 放行——两条路径产出的原型
+> 在体系里等价,都要过用户 👍。
+
 ## CLI 命令参数
 
 所有命令:`npx tsx workbench/cli.ts <命令> [参数]`。全局 `--project=<路径>` 指定项目根(缺省向上找
