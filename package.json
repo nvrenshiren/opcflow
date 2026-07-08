@@ -7,7 +7,7 @@
   "homepage": "https://github.com/nvrenshiren/opcflow#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nvrenshiren/opcflow.git"
+    "url": "git+https://github.com/nvrenshiren/opcflow.git"
   },
   "bugs": "https://github.com/nvrenshiren/opcflow/issues",
   "keywords": [
