@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/nvrenshiren/opcflow/compare/v0.2.1...v0.3.0) (2026-07-08)
+
+
+### Features
+
+* 经验提炼让 AI 判断沉淀为 skill/规则/记忆,阈值可配 ([eb12d33](https://github.com/nvrenshiren/opcflow/commit/eb12d33d3df60dc7b832c28742dbb717cf17da10))
+
 ## [0.2.1](https://github.com/nvrenshiren/opcflow/compare/v0.2.0...v0.2.1) (2026-07-08)
 
 
