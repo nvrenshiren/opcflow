@@ -11,6 +11,8 @@
 ![tests](https://img.shields.io/badge/tests-89%20passing-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
+**简体中文** · [English](README.en.md)
+
 </div>
 
 ---
