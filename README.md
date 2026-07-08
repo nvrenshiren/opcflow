@@ -1,50 +1,221 @@
+<div align="center">
+
 # Workbench
 
 **Drift-enforced、spec-anchored 的 AI 开发执行层。**
 
-生成无限快之后,验证是唯一瓶颈。Workbench 把你的每一次验证(审批、反馈)铸成机器可读、
-可失效、可传播的资产——文档 → 任务 → 产出形成真实关系链,任何一处变更都自动沿链传播、
-自动派复审。你只做三件事:**审批契约、给产物点 👍👎、回答裁决**。
+一套模板,把 Claude Code / Codex / OpenCode / Cursor 变成受契约约束的多角色开发流水线。
 
-## 能力一览
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
+![Node](https://img.shields.io/badge/node-%E2%89%A522-339933)
+![tests](https://img.shields.io/badge/tests-89%20passing-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
 
-- **真实关系链**:artifact DAG + 任务外键,不是命名约定
-- **五态信任锚点**:approved 内容被改自动失效,下游自动 stale
-- **双车道**:标准道(全流程)+ 快车道 hotfix(登记义务不豁免)
-- **变更传播**:sync 对账 → 失效 → 沿图派 review(去重)
-- **QA 闭环**:fail → 自动 rework → 自动复验,不消耗人
-- **反馈进化**:👍👎 与 QA verdict 半衰期加权提炼 → skill 候选 / Red Flags,草稿走人审;审批吞吐被度量
-- **协议 lint**:能机器查的约定降级为 gate 卡点
-- **可视化工作台**:树 + markdown/mermaid/原型/代码渲染 + 待审队列 diff + SSE 实时
-- **多平台接入**:一套模板生成 Claude Code / Codex / OpenCode / Cursor 各自的 agent + MCP + hooks(见 [PLATFORMS.md](./PLATFORMS.md))
-- **异构可移植**:纯后端项目自动裁掉 designer(qa 保留);零业务耦合(lint 强制)
+</div>
+
+---
+
+## 这是什么
+
+生成无限快之后,**验证是唯一瓶颈**。Workbench 把你的每一次验证(审批、👍👎、裁决)铸成
+机器可读、可失效、可传播的资产:文档 → 任务 → 产出形成真实的关系链(DAG + 外键),任何一处
+变更都**自动沿链传播、自动派复审**。你只做三件事:**审批契约、给产物点 👍👎、回答裁决**。
+
+- **真实关系链** —— artifact DAG + 任务外键,不是命名约定
+- **五态信任锚点** —— approved 内容被改自动失效,下游自动 stale(状态由文件内容派生,无需谁去"更新状态")
+- **五角色流水线** —— product-manager → architect → designer → developer → qa,各消费上游 approved 契约,各有 gate
+- **变更传播** —— `sync` 对账 → 失效 → 沿图派 review(去重)
+- **QA 闭环** —— fail → 自动 rework → 自动复验,不消耗人
+- **写门禁 hooks** —— agent 改到已 approved 契约时拦截(默认 observe 观察期)
+- **反馈进化** —— 👍👎 与 QA verdict 半衰期加权 → skill 候选 / Red Flags
+- **多平台** —— 一套定义生成四家平台各自的 agent + MCP + hooks(见 [PLATFORMS.md](PLATFORMS.md))
+- **可视化工作台** —— 树 + markdown/mermaid/原型/代码渲染 + 待审队列 diff + SSE 实时
+
+## 与 GitHub Spec Kit 的区别
+
+[Spec Kit](https://github.com/github/spec-kit) 是 spec-driven development 的脚手架:`/specify → /plan
+→ /tasks → implement`,每个阶段产出一份 markdown 喂给下一阶段,给 agent **结构化上下文**而非
+临时提示词。它解决的是「**如何写出好 spec 再交给 agent**」。
+
+Workbench 接管 **spec 之后的执行与验证**,两者是不同层次、可互补:
+
+| | Spec Kit | Workbench |
+| --- | --- | --- |
+| spec 的角色 | 给 agent 的**一次性上下文**(markdown) | 机器强制的**已批契约**,是 DAG 节点 |
+| 审批 | 无强制状态;人读一读 | 五态信任锚点(draft/pending/approved/invalidated),机器派生 |
+| 改了 spec 之后 | 无联动,靠人记得同步 | **自动失效 + 下游 stale + 派复审** |
+| 角色 | 基本单流程(一个 agent 实现) | 五角色流水线,各有 gate 与产出通道 |
+| 施工约束 | spec 是建议 | gate 拦住上游未批的任务;写门禁拦改已批契约;协议 lint 卡点 |
+| 验收 | 不涉及 | 两段式 QA + fail→rework→复验自动闭环 |
+| 进化 | 不涉及 | 👍👎/verdict 半衰期加权 → skill 候选 / Red Flags |
+
+一句话:**Spec Kit 把 spec 当"给 agent 的上下文";Workbench 把 spec 当"会失效、会传播、卡得住施工
+的已批契约",并管住从契约到代码到验收的整条漂移。**
+
+## 安装
+
+Workbench 以「租客」形态住进你的项目(`your-project/workbench/`),引擎依赖自带,不污染宿主。
+
+```bash
+# 1. 把 workbench/ 放进你的项目,装引擎依赖
+cd your-project/workbench && pnpm install && cd ..
+
+# 2. 一键引导:选平台(多选)+ 端 + 模型
+bash workbench/setup.sh
+#    或直接指定:
+npx tsx workbench/cli.ts init --platforms=claude,cursor --endpoints=service,web
+```
+
+`setup.sh` 交互选平台、端,并从 [models.dev](https://models.dev) 拉模型清单(node 解析,无需 jq)。
+`init` 会为选中的每个平台生成 agent 定义、注册 MCP、自动接线 hooks,并生成 `workbench.config.json`、
+`docs/` 骨架、git hooks、数据库 `.workbench/`。`--platforms` 缺省 `claude`。
+
+> **裸目录**:preset 会落地一个含 `tsx` 的最小 `package.json`,开箱即可 `npx tsx` 跑。
+> **纯后端项目**:`--endpoints=service` 自动裁掉 designer(qa 保留)。
+> 各平台落地格式、Codex trust、Cursor 主 agent 模型等注意点见 **[PLATFORMS.md](PLATFORMS.md)**。
+
+需要 Node ≥ 22。
 
 ## 快速开始
 
-```bash
-# 1. 把 workbench/ 拷进你的项目,装依赖
-cd my-project/workbench && pnpm install && cd ..
+1. **填代码目录约定** —— 编辑 `workbench.config.json` 的 `codeRoots`(每个端的代码目录,`{module}` 占位)。
+2. **起工作台**(可视化审批面板):
+   ```bash
+   cd workbench && pnpm start          # 首次:build 前端 + 起 server → http://127.0.0.1:5620
+   # 前端已 build 过、只重启后端:pnpm run serve
+   ```
+3. **对 AI 提第一个需求**(一句话)。它走五角色流水线逐层产出契约并送审。
+4. **在待审队列点头** —— 工作台看 diff,approve / 打回 / 给原型 👍。
+5. **契约全 approved 后派发**:
+   ```bash
+   npx tsx workbench/cli.ts plan --module=<模块>   # 一键派发 architect/designer/developer/qa 任务
+   ```
 
-# 2. 一键引导:选平台(多选)+ 端 + 模型(交互)
-bash workbench/setup.sh
-#    或直接指定:npx tsx workbench/cli.ts init --platforms=claude,cursor --endpoints=service,web
+之后的每次改动都被追踪:改了已批契约 → 自动失效 → 下游 stale → 待审队列出现复审任务。
 
-# 3. 填 workbench.config.json 的 codeRoots,启动工作台(首次需先 build 前端)
-cd workbench && pnpm start          # 首次/前端改动后:build 前端 + 起 server → http://127.0.0.1:5620
-# 前端已 build 过、只重启后端:pnpm run serve
+## Agent 写作流程(五角色流水线)
+
+```mermaid
+flowchart LR
+    U(["⬜ 需求"]) --> PM["🟦 product-manager<br/>业务契约"]
+    PM --> AR["🟦 architect<br/>DB + API 契约"]
+    AR --> DE["🟦 designer<br/>设计系统 + 原型"]
+    DE --> DV["🟦 developer<br/>代码"]
+    DV --> QA["🟦 qa<br/>验收"]
+    QA --> DONE(["✅ 模块 accepted"])
+    QA -.->|"fail → rework"| DV
 ```
 
-**完整教程见 [GETTING-STARTED.md](./GETTING-STARTED.md)。**
+> 🟦 agent 动作 · ⬜ 用户关卡(审批 / 👍) · ⚙️ 引擎自动。每一环的产出都要**过用户关卡**才成为
+> 下游可信真相。所有 agent 共用一套 **claim(过 gate)→ 消费 approved 上游 → 产出 → 登记 → 送审/👍/验收
+> → 过关卡 → complete** 的骨架。
 
-## 平台适配 & hooks
+**贯穿的信任协议**:上游 `approved` = 真相直接用(**禁重新推导、禁重复确认**);`draft/pending` = 可用但
+标注"未审";`invalidated / 复审中` = **禁用**等复审;有实质异议走 `dispute` 留痕停下,不擅自偏离。
 
-`init` 为选中的每个平台(`--platforms`,默认 `claude`)生成 agent 定义、注册 MCP、并**自动
-接线 hooks**——写门禁(改 approved 契约)+ 刷新(改文件重算 hash),默认 `observe` 只观测不拦截,
-`workbench.config.json` 的 `gates.writeGate` 切 `enforce` 才拦。合并语义:不覆盖你已有的配置。
+| 角色 | 何时介入 / gate | 产出 | 怎么成为真相 |
+| --- | --- | --- | --- |
+| **product-manager** | 用户提需求 | 逐层业务契约:project → roles/glossary → flow(含实体状态机)→ 模块 PRD → 页面 PRD(含验收要点) | 逐层送审,**批准才进下一层**;末层全批 → `plan` 派发 |
+| **architect** | gate:flow + 模块 PRD 已批 | 技术基线(ARCHITECTURE/TECH,0 号任务)、DB 文档、API 契约;**共享枚举唯一变更入口** | 人工审批;基线未批任何模块不得开工 |
+| **designer** | gate:该端设计系统已批 | 设计系统(人审)、设计提示词(仅登记不送审)、HTML 原型 | 原型靠 **👍 = 反馈+审批合一**放行 |
+| **developer** | gate:契约齐备;前端任务要求原型已 👍 | 各端代码(目录级 scan 维护,不手动登记) | complete 闸门:machineChecks / protocolLints 通过 |
+| **qa** | 两段式:先定验收标准(送审),developer 完成后执行 | 验收用例(`docs/acceptance/...`)、pass/fail | pass → 给 code +1 verdict;**fail → 自动 rework → 自动复验**直到 pass |
 
-各平台落地格式(Claude `.claude/settings.json` / Codex `.codex/config.toml` / Cursor
-`.cursor/hooks.json` / OpenCode 插件)与注意点(Codex trust、Cursor 主 agent 模型)见
-**[PLATFORMS.md](./PLATFORMS.md)**。关闭自动接线:`init ... --writehooks=false`。
+## CLI 命令参数
+
+所有命令:`npx tsx workbench/cli.ts <命令> [参数]`。全局 `--project=<路径>` 指定项目根(缺省向上找
+`workbench.config.json`)。文件路径参数用 `--` 分隔(如 `submit --actor=x -- <路径>`)。
+
+**任务**
+
+| 命令 | 作用 | 参数 |
+| --- | --- | --- |
+| `list` | 列任务 | `--status` `--assignee` `--module` `--role` `--endpoint` `--type` `--stale=true` |
+| `show <id>` | 任务详情(含事件/产出/stale) | `--json=true` |
+| `create` | 建任务 | 必填 `--role` `--creator`;选 `--module` `--endpoint` `--page` `--type` `--assignee` `--content` |
+| `claim <id>` | 领取(过 gate,自动快照依赖) | `--assignee=<角色>` |
+| `update <id>` | 改状态 | `--status` `--operator`;`--force=true` 越过 stale 拦截(留痕) |
+| `remove <id>` | 删任务 | `--operator`;`--force=true` |
+| `record <id> "备注"` | 加备注 | `--operator` |
+| `input <id> -- <路径>` | 补充申报 gate 之外读过的依赖 | `--operator` |
+
+**产出**
+
+| 命令 | 作用 | 参数 |
+| --- | --- | --- |
+| `output -- <路径>` | 登记产物(自动关联你领取的任务) | 必填 `--role` `--endpoint`;选 `--module` `--page` `--task` |
+| `artifacts` | 列产物 | `--module` `--endpoint` `--page` `--kind` |
+| `scan` | 全量扫描登记(docs + codeRoots),推导 DAG 边 | `--actor` |
+| `move --from=<> --to=<>` | 移动产物(保 id、不断审批) | `--actor` |
+
+**信任**
+
+| 命令 | 作用 | 参数 |
+| --- | --- | --- |
+| `submit -- <路径>` | 送审 | `--actor` |
+| `approve -- <路径>` | 批准 | `--actor`;`--trivial=true` 微调:re-bless 下游 + 关派生 review |
+| `reject -- <路径>` | 打回 | `--actor` `--reason` |
+| `feedback -- <路径>` | 反馈 / 👍👎(原型放行) | `--actor` `--verdict=+1\|-1`;选 `--comment` `--task` |
+| `dispute -- <路径>` | 对 approved 内容留痕异议,停下等裁决 | `--actor` `--reason` |
+| `queue` | 待审队列(pending + invalidated) | — |
+| `sync` | 对账:失效传播 + 沿图派 review | `--actor` |
+
+**流程**
+
+| 命令 | 作用 | 参数 |
+| --- | --- | --- |
+| `plan` | 契约全批后一键派发下游任务 | `--module`;选 `--creator` |
+| `qa <id>` | 记验收结果(fail 自动派 rework) | `--result=pass\|fail` `--operator`;fail 需 `--reason` |
+| `audit` | 模块契约对账报告(清算状态) | `--module` |
+| `graph` | 输出 Mermaid 依赖图 | `--module` |
+| `lint` | 跑协议 lint | 选 `--role` `--endpoint` |
+| `events` | 事件流 | `--taskId`/`<id>` `--module` `--event` `--limit` `--json` |
+| `intake` | 拉 GitHub issue 入队(标准道 / hotfix) | — |
+
+**进化 / 维护**
+
+| 命令 | 作用 | 参数 |
+| --- | --- | --- |
+| `retro` | 复盘:skill 候选 / Red Flag / 审批吞吐 | 选 `--module` `--json` |
+| `export` | 导出 events/feedback 为 jsonl | — |
+| `init` | 新项目引导 | `--endpoints`(必填);`--platforms` `--model` `--writehooks=false` `--preset=false` `--hooks=false` |
+| `gen-agents` | 从模板重生成 agent 定义 | — |
+| `register-meta` | 注册元产物(agent-def/skill/plan) | `--actor` |
+| `install-hooks` | 安装 git hooks | — |
+| `migrate` | 迁移旧库 | `--from=<路径>` |
+
+> AI 侧优先用 MCP 的 `wb_*` typed tools(与 CLI 同源同事务);**审批 approve/reject 刻意不暴露给 AI——那是你的动作**。
+
+## 配置(workbench.config.json)
+
+```jsonc
+{
+  "platforms": ["claude", "cursor"],          // 目标平台(setup.sh 选),缺省 ["claude"]
+  "endpoints": ["service", "web"],            // 你的端
+  "pipeline": ["product-manager", "architect", "designer", "developer", "qa"], // 角色流水线(不含的角色不派任务)
+  "codeRoots": {                              // 【必填】每端代码目录,{module} 占位
+    "service": ["service/src/modules/{module}"],
+    "web": ["web/src/pages/{module}"]
+  },
+  "moduleMapping": { "userProfile": "user" }, // 细模块归并到粗模块
+  "machineChecks": { "enabled": false,        // developer complete 时跑
+    "service": ["cd service && npx tsc --noEmit"] },
+  "protocolLints": [                          // 能机器查的约定 → 降级为 lint(违例阻断 complete)
+    { "name": "no-page-size", "grep": "pageSize", "paths": ["service/src"] }
+  ],
+  "gates": {
+    "approvalMode": "warn",                   // warn=未批只警告 / enforce=阻断
+    "writeGate": "observe"                     // off / observe(只记录)/ enforce(拦改 approved 契约)
+  },
+  "git": { "taskTrailer": "off", "trailerKey": "Task" }  // on=提交注入 Task:#id 归因 trailer
+}
+```
+
+## 可视化工作台
+
+`pnpm start` 起在 `http://127.0.0.1:5620`:artifact 树(状态实时变色)、markdown / mermaid / HTML 原型
+iframe / 代码渲染、**待审队列 diff**(approved 版本 vs 当前)、事件时间线、SSE 实时刷新。审批、打回、
+给原型 👍👎 都在这里点。
 
 ## 脚本
 
@@ -60,8 +231,8 @@ pnpm run check:isolation  # 零业务耦合校验
 ## 技术栈
 
 TypeScript · better-sqlite3 · Fastify · React 18 + antd 6 · Monaco · mermaid ·
-@modelcontextprotocol/sdk · tsx。运行时 Node ≥ 22。
+@modelcontextprotocol/sdk · smol-toml · tsx。运行时 Node ≥ 22。
 
 ## 许可
 
-MIT
+[MIT](LICENSE)
