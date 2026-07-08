@@ -79,7 +79,7 @@ function walkFiles(absDir: string, rel: string, out: string[]) {
   }
 }
 
-/** codeRoots 模式展开:占位符段(如 {group}/{module})逐层枚举目录,{module} 段捕获模块名 */
+/** codeRoots 模式展开:占位符段(如 {client}/{module})逐层枚举目录,{module} 段捕获模块名 */
 function expandCodeRoots(ctx: Ctx): { dir: string; endpoint: string; module: string }[] {
   const results: { dir: string; endpoint: string; module: string }[] = []
   for (const [endpoint, patterns] of Object.entries(ctx.config.codeRoots)) {
@@ -88,13 +88,19 @@ function expandCodeRoots(ctx: Ctx): { dir: string; endpoint: string; module: str
       let candidates: { dir: string; module: string | null }[] = [{ dir: "", module: null }]
       for (const segment of segments) {
         const next: { dir: string; module: string | null }[] = []
+        // 占位符段:`{module}` = 目录段(枚举子目录);`{module}.<ext>` = 文件段
+        // (枚举匹配后缀的文件,模块名 = 去后缀的文件名,如 account.prisma → account)。
+        const ph = /^\{(\w+)\}(.*)$/.exec(segment)
         for (const c of candidates) {
-          if (segment.startsWith("{") && segment.endsWith("}")) {
+          if (ph) {
+            const [, placeholder, suffix] = ph
             const abs = join(ctx.root, c.dir)
             if (!existsSync(abs)) continue
             for (const name of readdirSync(abs).sort()) {
-              if (!statSync(join(abs, name)).isDirectory()) continue
-              next.push({ dir: c.dir ? `${c.dir}/${name}` : name, module: segment === "{module}" ? name : c.module })
+              const isDir = statSync(join(abs, name)).isDirectory()
+              if (suffix === "" ? !isDir : isDir || !name.endsWith(suffix)) continue
+              const captured = suffix === "" ? name : name.slice(0, -suffix.length)
+              next.push({ dir: c.dir ? `${c.dir}/${name}` : name, module: placeholder === "module" ? captured : c.module })
             }
           } else {
             next.push({ dir: c.dir ? `${c.dir}/${segment}` : segment, module: c.module })
