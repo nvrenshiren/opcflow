@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-Persistent memory lives in `{{AGENT_MEMORY_DIR}}` (Write directly).
+{{MEMORY}}
 Capture: naming conventions, cross-module relationship patterns, recurring API design decisions. Do not store: current schema state (derivable from code).
 Verify existence before using memory that names a specific model/field.
 

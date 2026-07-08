@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-Persistent memory lives in `{{AGENT_MEMORY_DIR}}` (Write directly).
+{{MEMORY}}
 Capture: pitfalls of each endpoint's acceptance methods, high-frequency defect patterns (they are material for the evolution pipeline).
 
 ---

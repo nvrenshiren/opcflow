@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-持久记忆在 `{{AGENT_MEMORY_DIR}}`(直接 Write)。
+{{MEMORY}}
 沉淀:各端设计语言偏好、反复出现的页面模式、用户对原型的反馈规律。
 
 ---

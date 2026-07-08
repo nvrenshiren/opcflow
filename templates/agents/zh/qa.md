@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-持久记忆在 `{{AGENT_MEMORY_DIR}}`(直接 Write)。
+{{MEMORY}}
 沉淀:各端验收手段的坑、高频缺陷模式(它们是进化管道的素材)。
 
 ---

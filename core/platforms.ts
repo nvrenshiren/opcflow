@@ -58,6 +58,28 @@ export interface PlatformAdapter {
   writeMcp(root: string, server: McpServer): string
   /** 写/合并 hooks(observe 由 hook 脚本内部按 config.writeGate 决定),返回写入的相对路径 */
   writeHooks(root: string, wire: HookWire): string[]
+  /** 该平台「跨会话记忆/经验」的落地方式(按平台真实约定,非一刀切) */
+  memoryBlock(role: string, lang: "zh" | "en"): string
+}
+
+// ── 各平台记忆约定 ──
+// Claude:无原生 per-agent 记忆,用 workbench 约定的 .claude/agent-memory/<role>/ 写文件
+// Codex / OpenCode:无 per-agent 记忆目录,持久层是 AGENTS.md,经验沉淀进它的对应小节
+// Cursor:用原生 Memories(不写文件)
+function claudeMemory(role: string, lang: "zh" | "en"): string {
+  return lang === "en"
+    ? `# Persistent Agent Memory\n\nWith \`memory: project\`, your cross-session memory lives in \`.claude/agent-memory/${role}/\`, indexed by \`MEMORY.md\`. Write directly (no mkdir); verify a memory file exists before relying on it.`
+    : `# 持久记忆(Agent Memory)\n\n启用 \`memory: project\` 后,你的跨会话记忆在 \`.claude/agent-memory/${role}/\`,以 \`MEMORY.md\` 为索引。直接 Write(勿 mkdir);命名具体文件的记忆使用前先验证存在。`
+}
+function agentsMdMemory(name: string, lang: "zh" | "en"): string {
+  return lang === "en"
+    ? `# Cross-session lessons (AGENTS.md)\n\n${name} has no per-agent memory directory — the durable layer is \`AGENTS.md\`. Persist the cross-session lessons below by appending them to its relevant section (append only, never overwrite existing instructions).`
+    : `# 跨会话经验(写入 AGENTS.md)\n\n${name} 没有 per-agent 记忆目录,持久层是项目根 \`AGENTS.md\`。把下面这类跨会话经验追加进它的对应小节(只追加,勿覆盖既有指令)。`
+}
+function cursorMemory(lang: "zh" | "en"): string {
+  return lang === "en"
+    ? `# Cross-session lessons (Cursor Memories / rules)\n\nCursor has no per-agent memory. Persist the cross-session lessons below via Cursor's native Memories (auto-generated & auto-recalled) or a committable rule under \`.cursor/rules/\`.`
+    : `# 跨会话经验(Cursor Memories / rules)\n\nCursor 无 per-agent 记忆。把下面这类跨会话经验交给 Cursor 原生 Memories(自动生成、自动召回),或写进可提交的 \`.cursor/rules/\` 规则文件。`
 }
 
 // ─── 通用小工具 ─────────────────────────────────────────────
@@ -111,6 +133,7 @@ const claude: PlatformAdapter = {
   skillsDir: ".claude/skills",
   hooksScanDir: ".claude/hooks",
   defaultModel: "opus",
+  memoryBlock: (role, lang) => claudeMemory(role, lang),
   notes: [],
   agentFile: role => `${role}.md`,
   renderAgent: spec =>
@@ -155,6 +178,7 @@ const codex: PlatformAdapter = {
   skillsDir: ".agents/skills",
   hooksScanDir: null,
   defaultModel: "gpt-5.1-codex",
+  memoryBlock: (_role, lang) => agentsMdMemory("Codex", lang),
   notes: [
     "Codex:项目级 .codex/* 仅当项目被标记 trusted 才加载 —— 在 ~/.codex/config.toml 里为本项目设 trust_level=\"trusted\"",
     "Codex:skill 走 .agents/skills/(非 .codex/skills)"
@@ -196,6 +220,7 @@ const opencode: PlatformAdapter = {
   skillsDir: ".opencode/skills",
   hooksScanDir: null,
   defaultModel: "anthropic/claude-opus-4-8",
+  memoryBlock: (_role, lang) => agentsMdMemory("OpenCode", lang),
   notes: [
     "OpenCode:模型串是 provider/model 格式(见 models.dev);API key 建议走环境变量或 {env:...}"
   ],
@@ -264,6 +289,7 @@ const cursor: PlatformAdapter = {
   skillsDir: ".cursor/skills",
   hooksScanDir: null,
   defaultModel: "claude-opus-4-8",
+  memoryBlock: (_role, lang) => cursorMemory(lang),
   notes: [
     "Cursor:主 agent 模型由 UI 选,--model 只作用于生成的 subagent(.cursor/agents/*.md)"
   ],

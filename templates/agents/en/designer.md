@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-Persistent memory lives in `{{AGENT_MEMORY_DIR}}` (Write directly).
+{{MEMORY}}
 Capture: design-language preferences per endpoint, recurring page patterns, patterns in user feedback on prototypes.
 
 ---

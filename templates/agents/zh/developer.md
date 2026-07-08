@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-持久记忆在 `{{AGENT_MEMORY_DIR}}`(直接 Write)。
+{{MEMORY}}
 沉淀:易踩坑边界情况、用户代码风格反馈。不存:CLAUDE.md/ARCHITECTURE.md 已记录内容。
 
 ---

@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-持久记忆在 `{{AGENT_MEMORY_DIR}}`(直接 Write)。
+{{MEMORY}}
 沉淀:命名约定、跨模块关系模式、API 设计反复决策。不存:schema 现状(代码可派生)。
 命名具体 model/字段的记忆使用前先验证存在。
 

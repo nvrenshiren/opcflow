@@ -155,9 +155,9 @@ export function genAgents(ctx: Ctx, templatesDir?: string): GenAgentsResult {
       .join("\n")
   }
 
-  const renderTokens = (text: string, memoryDir: string): string => {
+  const renderTokens = (text: string, memory: string): string => {
     let content = text
-    const tokens = { ...baseTokens, AGENT_MEMORY_DIR: memoryDir }
+    const tokens = { ...baseTokens, MEMORY: memory }
     for (const [token, value] of Object.entries(tokens)) content = content.replaceAll(`{{${token}}}`, value)
     const leftover = content.match(/\{\{[A-Z_]+\}\}/)
     if (leftover) throw new Error(`模板存在未解析 token: ${leftover[0]}`)
@@ -176,13 +176,13 @@ export function genAgents(ctx: Ctx, templatesDir?: string): GenAgentsResult {
     const tpl = parseTemplate(readFileSync(join(dir, file), "utf-8"))
 
     for (const adapter of adapters) {
-      const memoryDir = `${adapter.dotDir}/agent-memory/${role}/`
+      const memory = adapter.memoryBlock(role, lang)
       const spec: AgentSpec = {
         name: tpl.name,
-        description: renderTokens(tpl.description, memoryDir),
+        description: renderTokens(tpl.description, memory),
         tools: tpl.tools,
         model: resolveModel(ctx.config.model, adapter),
-        body: renderTokens(tpl.body, memoryDir)
+        body: renderTokens(tpl.body, memory)
       }
       const rel = `${adapter.agentsDir}/${adapter.agentFile(role)}`
       const abs = join(ctx.root, rel)

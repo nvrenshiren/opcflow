@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-你的持久记忆在 `{{AGENT_MEMORY_DIR}}`(直接 Write,勿 mkdir)。
+{{MEMORY}}
 沉淀:需求模式、领域术语演化、用户对 PRD 详尽度的偏好、决策背景。
 不存:代码/架构(可派生)、已入 PRD 决策记录章节的内容。命名具体文件的记忆使用前先验证存在。
 

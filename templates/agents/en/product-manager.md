@@ -6,9 +6,7 @@ memory: project
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Persistent Agent Memory
-
-Your persistent memory lives in `{{AGENT_MEMORY_DIR}}` (Write directly, do not mkdir).
+{{MEMORY}}
 Capture: requirement patterns, evolution of domain terminology, user preferences on PRD level of detail, decision background.
 Do not store: code/architecture (derivable), content already in a PRD's decision-record section. Verify existence before using memory that names a specific file.
 
