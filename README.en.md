@@ -1,6 +1,6 @@
 <div align="center">
 
-# Workbench
+# opcflow
 
 **A drift-enforced, spec-anchored execution layer for AI coding.**
 
@@ -19,7 +19,7 @@ One template turns Claude Code / Codex / OpenCode / Cursor into a contract-gover
 
 ## What it is
 
-Once generation is effectively free, **verification is the only bottleneck**. Workbench forges every
+Once generation is effectively free, **verification is the only bottleneck**. opcflow forges every
 verification you make (approvals, 👍👎, rulings) into machine-readable, invalidatable, propagating
 assets: docs → tasks → outputs form a real relationship graph (a DAG + foreign keys), and any change
 **propagates along the chain and auto-dispatches re-reviews**. You do only three things: **approve
@@ -33,7 +33,7 @@ contracts, thumbs-up/down outputs, and answer rulings**.
 - **Write-gate hooks** — block agents from editing an approved contract (observe mode by default)
 - **Feedback evolution** — 👍👎 and QA verdicts, half-life weighted → skill candidates / Red Flags
 - **Multi-platform** — one definition generates each platform's agent + MCP + hooks (see [PLATFORMS.md](PLATFORMS.md))
-- **Visual workbench** — tree + markdown/mermaid/prototype/code rendering + review-queue diff + live SSE
+- **Visual opcflow** — tree + markdown/mermaid/prototype/code rendering + review-queue diff + live SSE
 
 ## Difference from GitHub Spec Kit
 
@@ -42,10 +42,10 @@ contracts, thumbs-up/down outputs, and answer rulings**.
 giving the agent **structured context** instead of ad-hoc prompts. It solves "**how to write a good
 spec before handing it to an agent**."
 
-Workbench takes over **execution and verification after the spec**. The two are different layers and
+opcflow takes over **execution and verification after the spec**. The two are different layers and
 complementary:
 
-| | Spec Kit | Workbench |
+| | Spec Kit | opcflow |
 | --- | --- | --- |
 | Role of the spec | **One-shot context** for the agent (markdown) | A machine-enforced **approved contract**; a DAG node |
 | Approval | No enforced state; a human reads it | Five-state trust anchor (draft/pending/approved/invalidated), machine-derived |
@@ -55,25 +55,25 @@ complementary:
 | Acceptance | Not covered | Two-stage QA + fail→rework→re-verify auto loop |
 | Evolution | Not covered | 👍👎/verdict half-life weighting → skill candidates / Red Flags |
 
-In one line: **Spec Kit treats the spec as "context for the agent"; Workbench treats it as "an
+In one line: **Spec Kit treats the spec as "context for the agent"; opcflow treats it as "an
 approved contract that can go stale, propagate, and block construction," and governs the entire drift
 from contract to code to acceptance.**
 
 ## Installation
 
-Workbench is an npm package — it **does not drop source into your project**. Bootstrap from your
+opcflow is an npm package — it **does not drop source into your project**. Bootstrap from your
 project root with npx, zero install:
 
 ```bash
 # In your project root: pick platforms (multi-select) + endpoints, generate in one shot
-npx -y @whzhuke/workbench init --platforms=claude,cursor --endpoints=service,web
+npx -y @whzhuke/opcflow init --platforms=claude,cursor --endpoints=service,web
 #   backend-only:  --endpoints=service          (auto-prunes designer, qa kept)
 #   set models:    --model='{"codex":"gpt-5.1-codex"}'  or  --model=<single string> (defaults per platform)
 ```
 
 It writes only **generated artifacts** — each platform's agent definitions, MCP registration, hooks,
-`workbench.config.json`, the `docs/` skeleton, and the `.workbench/` database; **no workbench source**.
-The generated MCP / hook / CLI references all point at `npx -y @whzhuke/workbench <subcommand>`, so no
+`workbench.config.json`, the `docs/` skeleton, and the `.workbench/` database; **no opcflow source**.
+The generated MCP / hook / CLI references all point at `npx -y @whzhuke/opcflow <subcommand>`, so no
 reinstall across machines or teammates. `--platforms` defaults to `claude`.
 
 > Per-platform layout, Codex trust, Cursor main-agent model, etc. — see **[PLATFORMS.md](PLATFORMS.md)**.
@@ -83,15 +83,15 @@ Requires Node ≥ 22.
 ## Quick Start
 
 1. **Fill in code-dir conventions** — edit `codeRoots` in `workbench.config.json` (each endpoint's code dir, `{module}` placeholder).
-2. **Start the workbench** (visual approval panel, connects to the project's `.workbench`):
+2. **Start the opcflow** (visual approval panel, connects to the project's `.workbench`):
    ```bash
-   npx -y @whzhuke/workbench serve       # → http://127.0.0.1:5620 (--project sets the root, defaults to cwd)
+   npx -y @whzhuke/opcflow serve       # → http://127.0.0.1:5620 (--project sets the root, defaults to cwd)
    ```
 3. **Give the AI your first requirement** (one sentence). It runs the five-role pipeline, producing contracts layer by layer and submitting them for review.
-4. **Nod in the review queue** — view diffs in the workbench; approve / reject; thumbs-up prototypes.
+4. **Nod in the review queue** — view diffs in the opcflow; approve / reject; thumbs-up prototypes.
 5. **Once all contracts are approved, dispatch:**
    ```bash
-   npx -y @whzhuke/workbench plan --module=<module>   # dispatch architect/designer/developer/qa tasks
+   npx -y @whzhuke/opcflow plan --module=<module>   # dispatch architect/designer/developer/qa tasks
    ```
 
 Every later change is tracked: edit an approved contract → auto-invalidate → downstream stale → a
@@ -136,7 +136,7 @@ never silently deviate.
 
 ## CLI Commands & Parameters
 
-Every command: `npx -y @whzhuke/workbench <command> [args]`. Global `--project=<path>` sets the project
+Every command: `npx -y @whzhuke/opcflow <command> [args]`. Global `--project=<path>` sets the project
 root (otherwise it searches upward for `workbench.config.json`). File-path arguments are separated with
 `--` (e.g. `submit --actor=x -- <path>`).
 
@@ -225,9 +225,9 @@ root (otherwise it searches upward for `workbench.config.json`). File-path argum
 }
 ```
 
-## Visual Workbench
+## Visual opcflow
 
-`npx -y @whzhuke/workbench serve` serves at `http://127.0.0.1:5620`: the artifact tree (colors update live), markdown /
+`npx -y @whzhuke/opcflow serve` serves at `http://127.0.0.1:5620`: the artifact tree (colors update live), markdown /
 mermaid / HTML-prototype iframe / code rendering, the **review-queue diff** (approved version vs.
 current), an event timeline, and live SSE refresh. Approve, reject, and thumbs-up/down prototypes right
 here.
@@ -235,7 +235,7 @@ here.
 ## Scripts
 
 ```bash
-pnpm start                # start the workbench (build frontend + start server; use for first run)
+pnpm start                # start the opcflow (build frontend + start server; use for first run)
 pnpm run serve            # server only, no frontend build (404 if web/dist is missing)
 pnpm run web:build        # build the frontend
 pnpm test                 # core unit tests

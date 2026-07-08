@@ -38,7 +38,7 @@ function walkFiles(abs: string, rel: string, out: string[]) {
 }
 
 /**
- * 协议 lint 引擎:能机器化的约定坚决降级为机器检查(M5)。
+ * 协议 lint 引擎:能机器化的约定坚决降级为机器检查。
  * 规则来自 config.protocolLints;按角色/端过滤;allowlist 承接既有债。
  */
 export function runProtocolLints(

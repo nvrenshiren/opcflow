@@ -6,5 +6,5 @@ const ctx = openWorkbench(process.env.WORKBENCH_PROJECT)
 
 createServer(ctx).then(async app => {
   await app.listen({ port, host: "127.0.0.1" })
-  console.log(`Workbench server: http://127.0.0.1:${port}  (project: ${ctx.root})`)
+  console.log(`opcflow server: http://127.0.0.1:${port}  (project: ${ctx.root})`)
 })

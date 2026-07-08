@@ -285,7 +285,7 @@ export async function runInit(root: string, a: Record<string, any>): Promise<voi
   r.ctx.db.close()
 }
 
-const HELP = `Workbench CLI
+const HELP = `opcflow CLI
 
 任务   list / show <id> / create / claim / update / remove / record
 产出   output / artifacts / scan / move / input

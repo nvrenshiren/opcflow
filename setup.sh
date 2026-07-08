@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# workbench 多平台安装引导:选平台(多选)+ 选模型(models.dev)→ 生成各平台 agent/MCP/hooks。
+# opcflow 多平台安装引导:选平台(多选)+ 选模型(models.dev)→ 生成各平台 agent/MCP/hooks。
 # 交互运行:  bash setup.sh
 # 非交互(CI/自测):设环境变量跳过提问 —— WB_NONINTERACTIVE=1 WB_PLATFORMS="claude codex"
 #   WB_ENDPOINTS=service,web WB_MODEL='{"codex":"gpt-5.1-codex"}' WB_PROJECT=/path bash setup.sh
@@ -21,7 +21,7 @@ ask() {
   echo "${ans:-$2}"
 }
 
-echo "═══ workbench 多平台安装引导 ═══"
+echo "═══ opcflow 多平台安装引导 ═══"
 echo "  目标项目: $PROJECT"
 echo ""
 

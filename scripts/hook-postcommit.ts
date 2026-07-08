@@ -10,7 +10,7 @@ async function main() {
   scanArtifacts(ctx, "post-commit")
   syncArtifacts(ctx, "post-commit")
   detectOrphanCommit(ctx)
-  // M8 数据单点缓解:events/feedback 随每次提交导出 jsonl,下次提交自然入 git
+  // 数据单点缓解:events/feedback 随每次提交导出 jsonl,下次提交自然入 git
   exportEventLog(ctx)
 }
 

@@ -1,5 +1,5 @@
 /**
- * 可移植性纪律检查:workbench 包禁止 import 任何业务代码。
+ * 可移植性纪律检查:opcflow 包禁止 import 任何业务代码。
  * 违规即 exit 1。在 CI / 提交前运行。
  */
 import { readdirSync, readFileSync, statSync } from "node:fs"
@@ -9,7 +9,7 @@ const PKG_ROOT = join(import.meta.dirname, "..")
 
 const FORBIDDEN: { pattern: RegExp; reason: string }[] = [
   { pattern: /from\s+["'](?:\.\.\/)+(?:service|admin|weapp|app|packages)\//, reason: "禁止相对路径引用业务代码" },
-  { pattern: /from\s+["']@whzhuke\/(?!workbench)/, reason: "禁止引用 @whzhuke 业务包" },
+  { pattern: /from\s+["']@whzhuke\/(?!opcflow)/, reason: "禁止引用 @whzhuke 业务包" },
   { pattern: /require\(\s*["'](?:\.\.\/)+(?:service|admin|weapp|app|packages)\//, reason: "禁止 require 业务代码" },
   { pattern: /["'][A-Za-z]:\\\\/, reason: "禁止硬编码绝对路径" }
 ]
@@ -43,4 +43,4 @@ if (violations.length > 0) {
   for (const v of violations) console.error("  " + v)
   process.exit(1)
 }
-console.log("✓ 隔离检查通过:workbench 无业务耦合")
+console.log("✓ 隔离检查通过:opcflow 无业务耦合")

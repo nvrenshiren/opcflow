@@ -6,11 +6,11 @@ import { type AgentSpec, resolveModel, resolvePlatforms } from "../platforms"
 import type { ArtifactKind, Ctx } from "../types"
 
 /**
- * 从中性模板生成各平台的 agent 定义(宪法第七条的落地):
+ * 从中性模板生成各平台的 agent 定义:
  * - 路径不再手写在 prompt 里,由 kind 注册表展开注入 → agent 规则与路径约定单一真相源
  * - 共享块(信任协议/CLI 用法)集中一处,五个角色统一
  * - 模板解析成平台无关 AgentSpec,再由各平台 adapter 序列化(md+frontmatter / toml)
- * - 生成物是元产物(agent-def),draft 注册,M4 出口经用户审批锚定
+ * - 生成物是元产物(agent-def),draft 注册,经用户审批锚定
  */
 
 function expandPath(ctx: Ctx, kind: ArtifactKind): string {

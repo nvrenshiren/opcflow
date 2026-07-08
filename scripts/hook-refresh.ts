@@ -1,11 +1,11 @@
 /**
  * 多平台 PostToolUse hook:agent 写/改文件后秒级刷新对应 artifact 的 hash。
- * 宪法第六条:观测 fail-open——任何失败只静默退出,绝不阻塞 agent。
+ * 观测 fail-open——任何失败只静默退出,绝不阻塞 agent。
  * 平台由 --platform=<id> 指定;stdin/项目根按平台归一(见 hook-input)。
  */
 import { extractFilePath, hookPlatform, hookProjectDir, readStdinJson } from "./hook-input"
 
-/** 刷新主逻辑;由 `workbench hook post --platform=X` 或独立入口调用 */
+/** 刷新主逻辑;由 `opcflow hook post --platform=X` 或独立入口调用 */
 export async function refreshHook(_platform?: string) {
   const input = await readStdinJson()
   const filePath = extractFilePath(input)

@@ -245,7 +245,7 @@ export function validateComplete(
     }
   }
 
-  // 协议 lint(M5):developer 按端 / architect 契约文档,违例即阻断(legacy 已在上方早退)
+  // 协议 lint:developer 按端 / architect 契约文档,违例即阻断(legacy 已在上方早退)
   if (task.role === "developer" || task.role === "architect") {
     const violations = runProtocolLints(ctx, { role: task.role, endpoint: task.endpoint })
     if (violations.length > 0) {
@@ -259,7 +259,7 @@ export function validateComplete(
     }
   }
 
-  // developer:机器检查(M5 起 enabled)
+  // developer:机器检查(config 开启时)
   if (task.role === "developer" && task.endpoint && ctx.config.machineChecks.enabled) {
     const cmds = ctx.config.machineChecks[task.endpoint]
     if (Array.isArray(cmds)) {

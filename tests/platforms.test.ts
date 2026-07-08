@@ -59,28 +59,28 @@ describe("platform adapter:agent 序列化", () => {
 describe("platform adapter:MCP 写入(合并,不覆盖既有)", () => {
   const root = mkdtempSync(join(tmpdir(), "wb-mcp-"))
   after(() => rmSync(root, { recursive: true, force: true }))
-  const server = { name: "workbench", command: "npx", args: ["tsx", "../server/mcp.ts"] }
+  const server = { name: "opcflow", command: "npx", args: ["tsx", "../server/mcp.ts"] }
 
   it("claude:合并进已有 .mcp.json 不丢用户的 server", () => {
     writeFileSync(join(root, ".mcp.json"), JSON.stringify({ mcpServers: { other: { command: "x" } } }))
     getAdapter("claude").writeMcp(root, server)
     const json = JSON.parse(readFileSync(join(root, ".mcp.json"), "utf-8"))
     assert.equal(json.mcpServers.other.command, "x")
-    assert.deepEqual(json.mcpServers.workbench, { command: "npx", args: ["tsx", "../server/mcp.ts"] })
+    assert.deepEqual(json.mcpServers.opcflow, { command: "npx", args: ["tsx", "../server/mcp.ts"] })
   })
 
-  it("codex:写进 .codex/config.toml 的 [mcp_servers.workbench]", () => {
+  it("codex:写进 .codex/config.toml 的 [mcp_servers.opcflow]", () => {
     getAdapter("codex").writeMcp(root, server)
     const cfg = parseToml(readFileSync(join(root, ".codex/config.toml"), "utf-8")) as any
-    assert.equal(cfg.mcp_servers.workbench.command, "npx")
-    assert.deepEqual(cfg.mcp_servers.workbench.args, ["tsx", "../server/mcp.ts"])
+    assert.equal(cfg.mcp_servers.opcflow.command, "npx")
+    assert.deepEqual(cfg.mcp_servers.opcflow.args, ["tsx", "../server/mcp.ts"])
   })
 
   it("opencode:command 是整个数组 + type=local", () => {
     getAdapter("opencode").writeMcp(root, server)
     const json = JSON.parse(readFileSync(join(root, "opencode.json"), "utf-8"))
-    assert.equal(json.mcp.workbench.type, "local")
-    assert.deepEqual(json.mcp.workbench.command, ["npx", "tsx", "../server/mcp.ts"])
+    assert.equal(json.mcp.opcflow.type, "local")
+    assert.deepEqual(json.mcp.opcflow.command, ["npx", "tsx", "../server/mcp.ts"])
   })
 })
 
@@ -110,9 +110,9 @@ describe("platform adapter:hooks 写入", () => {
     assert.equal(json.hooks.preToolUse.length, 1)
   })
 
-  it("opencode:生成 .opencode/plugins/workbench.ts 插件薄壳", () => {
+  it("opencode:生成 .opencode/plugins/opcflow.ts 插件薄壳", () => {
     getAdapter("opencode").writeHooks(root, wire)
-    const plugin = readFileSync(join(root, ".opencode/plugins/workbench.ts"), "utf-8")
+    const plugin = readFileSync(join(root, ".opencode/plugins/opcflow.ts"), "utf-8")
     assert.ok(plugin.includes("tool.execute.before"))
     assert.ok(plugin.includes("PRE --platform=x"))
   })

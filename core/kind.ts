@@ -1,7 +1,7 @@
 import { resolvePlatforms } from "./platforms"
 import type { ArtifactKind, WorkbenchConfig } from "./types"
 
-// ─── kind 注册表(M0.5 结构定稿,M1 完成五处接线) ───────────────────────
+// ─── kind 注册表 ───────────────────────
 
 export type KindHashMode = "text-normalize" | "binary" | "directory"
 export type KindApproval = "human" | "thumbs" | "machine" | "none"
@@ -19,7 +19,7 @@ export interface KindSpec {
   drivesStale: boolean
   /** hash 归一策略 */
   hashMode: KindHashMode
-  /** 上下文装配层级(M4):full=全文注入 / summary=摘要注入 / semantic=语义检索提案 */
+  /** 上下文装配层级:full=全文注入 / summary=摘要注入 / semantic=语义检索提案 */
   retrieval: KindRetrieval
   /**
    * 路径约定:{prd}/{architecture}/{design}/{acceptance} 占位符由 config.docs 展开;

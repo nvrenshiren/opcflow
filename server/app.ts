@@ -173,7 +173,7 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
     req.raw.on("close", () => clearInterval(timer))
   })
 
-  // ─── 写 API(M3):全部走 commands 层,gate 错误原样回传 ───────────
+  // ─── 写 API:全部走 commands 层,gate 错误原样回传 ───────────
 
   app.get("/api/review-queue", async () => {
     // 前端依赖 ever_approved(区分"复审中"与首次待审),与 nodeDetail 同口径补齐
@@ -229,7 +229,7 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
       })
   )
 
-  app.post("/api/sync", async () => syncArtifacts(ctx, "workbench"))
+  app.post("/api/sync", async () => syncArtifacts(ctx, "opcflow"))
 
   app.post<{ Params: { id: string }; Body: { assignee: string } }>("/api/task/:id/claim", async req =>
     claimTask(ctx, { id: parseInt(req.params.id), assignee: req.body.assignee })

@@ -23,12 +23,12 @@ import type { Ctx } from "../core/types"
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] })
 
 /**
- * MCP 端点(M7):commands 层包装为 typed tools。
+ * MCP 端点:commands 层包装为 typed tools。
  * 与 CLI 完全同源——同一 commands 层、同一事务、同一事件流;
- * 审批(approve/reject)刻意不暴露:那是人的动作,只在 Workbench/CLI 由用户执行。
+ * 审批(approve/reject)刻意不暴露:那是人的动作,只在 opcflow/CLI 由用户执行。
  */
 export function buildMcpServer(ctx: Ctx): McpServer {
-  const server = new McpServer({ name: "workbench", version: "0.1.0" })
+  const server = new McpServer({ name: "opcflow", version: "0.1.0" })
 
   server.registerTool(
     "wb_list_tasks",
@@ -165,7 +165,7 @@ export function buildMcpServer(ctx: Ctx): McpServer {
   return server
 }
 
-// stdio 入口:npx tsx workbench/server/mcp.ts
+// stdio 入口(独立运行;打包后由 opcflow mcp 子命令调用)
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("server/mcp.ts")) {
   import("../core/db").then(async ({ openWorkbench }) => {
     const ctx = openWorkbench(process.env.WORKBENCH_PROJECT)

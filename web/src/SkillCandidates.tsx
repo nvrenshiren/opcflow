@@ -8,8 +8,8 @@ import { t } from "./i18n"
 function buildDraftPrompt(g: DistillGroup, guidance: string[]): string {
   const lines: string[] = [
     t(
-      "依据以下 workbench 反馈证据,起草一份 skill(.claude/skills/<名称>/SKILL.md):",
-      "Based on the following workbench feedback evidence, draft a skill (.claude/skills/<name>/SKILL.md):"
+      "依据以下 opcflow 反馈证据,起草一份 skill(.claude/skills/<名称>/SKILL.md):",
+      "Based on the following opcflow feedback evidence, draft a skill (.claude/skills/<name>/SKILL.md):"
     ),
     "",
     t(

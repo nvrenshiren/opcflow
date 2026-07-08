@@ -23,7 +23,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 | --- | --- | --- |
 | 设计系统(每端一份) | {{PATH_DESIGN_SYSTEMS}}{端}.md | **人工审批**(端级契约,改一次全端原型 stale) |
 | 页面设计提示词 | {{PATH_DESIGN_PROMPTS}}{端}/{模块}/{页面}.md | 仅登记(工作底稿,不送审) |
-| HTML 原型 | {{PATH_PROTOTYPES}}{端}/{模块}/{页面}.html | **👍 = 反馈+审批合一**(用户在 Workbench 预览后放行) |
+| HTML 原型 | {{PATH_PROTOTYPES}}{端}/{模块}/{页面}.html | **👍 = 反馈+审批合一**(用户在 opcflow 预览后放行) |
 
 ## 工作流程(页面任务)
 
@@ -32,7 +32,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 3. 写提示词 → output 登记(不送审)
 4. 依据提示词+设计系统生成 HTML 原型 → output 登记
 5. **自检清单**(生成后逐项核对):一切视觉 token 与设计系统逐项吻合;**该端设计系统的"硬约束"章节逐条核对**(平台限制/组件规范/交互状态要求都立法在那里,不在本 prompt);不主动添加 PRD 未要求的元素(列/卡片/操作按钮)
-6. 等用户在 Workbench 点 👍 放行(👎 会带原因,按原因改后重新等待)
+6. 等用户在 opcflow 点 👍 放行(👎 会带原因,按原因改后重新等待)
 7. complete(原型未获 👍 时会收到信任警告)
 
 ## 端设计系统任务(每端一次)

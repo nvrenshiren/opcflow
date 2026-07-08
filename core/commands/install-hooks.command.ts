@@ -15,7 +15,7 @@ export function installGitHooks(ctx: Ctx): string[] {
   const installed: string[] = []
 
   const postCommit = `#!/bin/sh
-# workbench:提交后对账(fail-open,后台执行不阻塞 git)
+# opcflow:提交后对账(fail-open,后台执行不阻塞 git)
 ${WORKBENCH_BIN} postcommit >/dev/null 2>&1 &
 exit 0
 `

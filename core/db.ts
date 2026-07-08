@@ -5,7 +5,7 @@ import { findProjectRoot, loadConfig } from "./config"
 import type { Ctx } from "./types"
 
 /**
- * 迁移 1:M0 形态(含 submitted_hash)。
+ * 迁移 1:初始 schema(含 submitted_hash)。
  * 历史说明:role/type 的 CHECK 在迁移 2 中删除(项目语义下沉 commands 层),
  * status 的 CHECK 保留(引擎不变式,DB 层最后防线)。
  */
@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_feedback_artifact ON artifact_feedback(artifact_i
 `
 
 /**
- * 迁移 2(M0.5 CHECK 手术 + 便宜 DDL):
+ * 迁移 2(CHECK 手术 + 便宜 DDL):
  * - tasks 重建:删 role/type CHECK(项目语义下沉 commands 层),保 status CHECK(引擎不变式);
  *   endpoint 改 nullable;新增 external_ref(issue 关联)
  * - events 补 module / event 索引
@@ -147,7 +147,7 @@ export const MIGRATIONS: Migration[] = [
       }
     }
   },
-  // 迁移 3(M3):claim 时记录 git HEAD,供 hotfix 契约触碰检测与 trailer 交叉验证
+  // 迁移 3:claim 时记录 git HEAD,供 hotfix 契约触碰检测与 trailer 交叉验证
   { version: 3, up: db => db.exec("ALTER TABLE tasks ADD COLUMN claim_commit TEXT") }
 ]
 
@@ -155,7 +155,7 @@ export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version
 
 /**
  * 版本化迁移:
- * - 基线规则:库已有 artifacts 表但无 schema_version → 打基线戳(=版本 1,即 M0 形态)
+ * - 基线规则:库已有 artifacts 表但无 schema_version → 打基线戳(=版本 1)
  * - 新库从空跑迁移链 0→N;两条路径的最终 schema 由等价测试保证一致
  */
 export function ensureSchema(db: Database.Database) {

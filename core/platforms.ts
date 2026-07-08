@@ -21,14 +21,14 @@ export interface AgentSpec {
   body: string
 }
 
-/** 要注册的 MCP server(workbench 自身) */
+/** 要注册的 MCP server(opcflow 自身) */
 export interface McpServer {
   name: string
   command: string
   args: string[]
 }
 
-/** hooks 接线入参(命令由 init 用 workbenchRelPath 算好后传入,平台层不碰路径) */
+/** hooks 接线入参(完整命令由 init 算好后传入,平台层不碰路径) */
 export interface HookWire {
   /** PreToolUse(写门禁)完整命令 */
   preCommand: string
@@ -63,7 +63,7 @@ export interface PlatformAdapter {
 }
 
 // ── 各平台记忆约定 ──
-// Claude:无原生 per-agent 记忆,用 workbench 约定的 .claude/agent-memory/<role>/ 写文件
+// Claude:无原生 per-agent 记忆,用 opcflow 约定的 .claude/agent-memory/<role>/ 写文件
 // Codex / OpenCode:无 per-agent 记忆目录,持久层是 AGENTS.md,经验沉淀进它的对应小节
 // Cursor:用原生 Memories(不写文件)
 function claudeMemory(role: string, lang: "zh" | "en"): string {
@@ -253,9 +253,9 @@ const opencode: PlatformAdapter = {
     return writeFile(root, rel, JSON.stringify(json, null, 2) + "\n")
   },
   writeHooks(root, wire) {
-    // OpenCode 的 hook 是进程内 JS 插件:写一个薄壳,把工具事件转发给 workbench hook 脚本
-    const rel = ".opencode/plugins/workbench.ts"
-    const plugin = `// workbench:把工具调用前后事件转发给 hook 脚本(观测写门禁 + 刷新 hash)
+    // OpenCode 的 hook 是进程内 JS 插件:写一个薄壳,把工具事件转发给 opcflow hook 脚本
+    const rel = ".opencode/plugins/opcflow.ts"
+    const plugin = `// opcflow:把工具调用前后事件转发给 hook 脚本(观测写门禁 + 刷新 hash)
 import { spawn } from "node:child_process"
 
 function runHook(cmd: string, payload: unknown): Promise<void> {
@@ -269,7 +269,7 @@ function runHook(cmd: string, payload: unknown): Promise<void> {
   })
 }
 
-export const workbench = async () => ({
+export const opcflow = async () => ({
   "tool.execute.before": async (_input: unknown, output: unknown) => {
     await runHook(${JSON.stringify(wire.preCommand)}, output)
   },

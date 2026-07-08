@@ -8,9 +8,9 @@ import type { ArtifactKind, Ctx, WorkbenchConfig } from "../types"
 import { normalizeRelPath } from "./artifact.commands"
 
 /**
- * 元产物 draft 注册(宪法第七条:驱动系统的文件不能游离于系统之外)。
+ * 元产物 draft 注册(驱动系统的文件不能游离于系统之外)。
  * draft 是零摩擦状态:无 approved_hash 即无失效级联,施工期白嫖变更留痕;
- * 审批时点分层——agent-def/skill/hook 于 M4 出口锚定,plan 于校准点过后锚定。
+ * 审批时点分层——agent-def/skill/hook 经审批即锚定,plan 于校准点过后锚定。
  * migrate scan 排除这些路径,元产物只走本命令显式注册。
  */
 export interface RegisterMetaResult {

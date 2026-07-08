@@ -17,7 +17,7 @@ export interface QaResultOutcome {
 /**
  * QA 验收结果(rework 闭环的入口):
  * - pass:qa_passed 事件 + 完成任务 + 自动给该坐标 code 产物写 +1 verdict
- *   (M8 进化管道的主粮——单用户手动 👍 频率不足,QA 结果自动喂)
+ *   (进化管道的主粮——单用户手动 👍 频率不足,QA 结果自动喂)
  * - fail:必附原因;qa_failed 事件 + 完成本 qa 任务 + 自动派 rework 任务给 developer;
  *   rework 完成时由 updateTask 自动再派新一轮 qa(循环直到 pass)
  */

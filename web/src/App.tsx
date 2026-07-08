@@ -156,7 +156,7 @@ export default function App() {
           />
         </svg>
         <Typography.Text strong style={{ fontSize: 15, letterSpacing: -0.2 }}>
-          Workbench
+          opcflow
         </Typography.Text>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
           {t("spec-anchored 执行层", "spec-anchored execution layer")}

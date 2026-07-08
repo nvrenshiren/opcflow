@@ -1,6 +1,6 @@
 /**
- * Workbench CLI —— 单一 bin 承载全部子命令(发布后经 `npx -y @whzhuke/workbench <cmd>` 调用)。
- * 项目侧不落 workbench 源码:init 生成的 config.cli / .mcp.json / hooks 全指向本 bin。
+ * opcflow CLI —— 单一 bin 承载全部子命令(发布后经 `npx -y @whzhuke/opcflow <cmd>` 调用)。
+ * 项目侧不落 opcflow 源码:init 生成的 config.cli / .mcp.json / hooks 全指向本 bin。
  *   init                      新项目引导
  *   mcp                       起 MCP server(stdio),读 --project / cwd 的 .workbench
  *   serve [--project --port]  起 web 工作台,连接项目的 .workbench
@@ -55,7 +55,7 @@ async function main() {
     if (port !== start) console.error(`端口 ${start} 被占用,改用 ${port}`)
     const app = await createServer(ctx)
     await app.listen({ port, host })
-    console.log(`Workbench: http://127.0.0.1:${port}  (host: ${host}, project: ${ctx.root})`)
+    console.log(`opcflow: http://127.0.0.1:${port}  (host: ${host}, project: ${ctx.root})`)
     return
   }
 

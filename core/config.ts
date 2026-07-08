@@ -5,16 +5,16 @@ import type { WorkbenchConfig } from "./types"
 export const CONFIG_FILENAME = "workbench.config.json"
 
 /** npm 包名 */
-export const PKG_NAME = "@whzhuke/workbench"
+export const PKG_NAME = "@whzhuke/opcflow"
 
 /**
  * 生成到项目里的命令前缀:统一走 npx 零安装调用已发布的包。
- * 项目侧不再需要 workbench 源码——config.cli / .mcp.json / hooks 全指向这个 bin。
+ * 项目侧不再需要 opcflow 源码——config.cli / .mcp.json / hooks 全指向这个 bin。
  */
 export const WORKBENCH_BIN = `npx -y ${PKG_NAME}`
 
 /**
- * workbench 包根目录。源码运行时 import.meta.dirname = <pkg>/core;
+ * opcflow 包根目录。源码运行时 import.meta.dirname = <pkg>/core;
  * 编译发布后 = <pkg>/dist —— 两者都在包根下一层,统一 ".." 定位包根,
  * templates / preset / web/dist 均由此解析,兼容 tsx 源码与编译产物两种形态。
  */

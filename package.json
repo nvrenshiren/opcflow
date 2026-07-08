@@ -1,15 +1,15 @@
 {
-  "name": "@whzhuke/workbench",
+  "name": "@whzhuke/opcflow",
   "version": "0.1.0",
   "description": "Spec-anchored, drift-enforced execution layer for AI coding agents — artifact DAG, trust gates, multi-role pipeline; generates agents/MCP/hooks for Claude Code, Codex, OpenCode & Cursor.",
   "license": "MIT",
   "author": "Dawi",
-  "homepage": "https://github.com/nvrenshiren/workbench#readme",
+  "homepage": "https://github.com/nvrenshiren/opcflow#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nvrenshiren/workbench.git"
+    "url": "https://github.com/nvrenshiren/opcflow.git"
   },
-  "bugs": "https://github.com/nvrenshiren/workbench/issues",
+  "bugs": "https://github.com/nvrenshiren/opcflow/issues",
   "keywords": [
     "ai-agents",
     "coding-agent",
@@ -26,7 +26,7 @@
     "node": ">=22"
   },
   "bin": {
-    "workbench": "dist/cli.mjs"
+    "opcflow": "dist/cli.mjs"
   },
   "files": [
     "dist",

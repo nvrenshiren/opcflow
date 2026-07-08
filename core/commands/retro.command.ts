@@ -2,14 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type { Ctx } from "../types"
 
-// ─── M8 进化机制:反馈加权提炼 + 审批吞吐报表 + 事件导出 ───────────────────
+// ─── 进化机制:反馈加权提炼 + 审批吞吐报表 + 事件导出 ───────────────────
 //
-// 宪法边界:本命令层是**确定性聚合**(对齐反清单"plan 不引入 AI 分析")。
-// 它只把 artifact_feedback / events 铸成证据包;把证据写成 skill 草稿是 AI 的活,
-// 草稿注册为 kind=skill 元产物(register-meta)→ submit → 用户人审,approved 才生效——
-// 智能永远夹在两道确定性之间。
+// 本命令层是**确定性聚合**:只把 artifact_feedback / events 铸成证据包;把证据写成 skill
+// 草稿是 AI 的活,草稿注册为 kind=skill 元产物(register-meta)→ submit → 用户人审,approved
+// 才生效——智能永远夹在两道确定性之间。
 
-/** 加权正例分 ≥ 3 → skill 草稿候选(PLAN M8 定死的规则) */
+/** 加权正例分 ≥ 3 → skill 草稿候选 */
 export const SKILL_CANDIDATE_THRESHOLD = 3
 /** 加权负例分 ≥ 2 → Red Flags */
 export const RED_FLAG_THRESHOLD = 2

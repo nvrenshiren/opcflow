@@ -9,7 +9,7 @@ import { ownerRole } from "./sync.command"
 import type { ArtifactRow, Ctx, EventRow, Role, TaskRow, TaskStatus, TaskType } from "../types"
 
 const VALID_STATUS: TaskStatus[] = ["pending", "in_progress", "completed", "cancelled"]
-// role/type 是项目语义:DB CHECK 已删(迁移 2),校验下沉到此(M1 起可由 config 覆盖)
+// role/type 是项目语义:不走 DB CHECK,校验下沉到代码层(可由 config 覆盖)
 const VALID_TYPES: TaskType[] = ["build", "review", "qa", "hotfix", "baseline", "legacy", "rework"]
 const VALID_ROLES: Role[] = ["product-manager", "architect", "designer", "developer", "qa"]
 

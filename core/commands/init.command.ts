@@ -28,7 +28,7 @@ export interface InitOptions {
   scaffold?: boolean
   /** 是否写各平台 MCP 配置(默认 true) */
   mcp?: boolean
-  /** 是否把 workbench/preset 下的预置文件部署到项目根(默认 true) */
+  /** 是否把 preset/ 下的预置文件部署到项目根(默认 true) */
   preset?: boolean
   /** 目标平台(默认 ["claude"]);决定 agent/MCP/hooks 落地格式 */
   platforms?: string[]
@@ -98,14 +98,13 @@ function deployPreset(root: string): string[] {
   return deployed
 }
 
-/** 根 package.json 缺 tsx 时补的版本区间(与 workbench 自身 devDep 对齐) */
+/** 根 package.json 缺 tsx 时补的版本区间(与 opcflow 自身 devDep 对齐) */
 const TSX_VERSION = "^4"
 
 /**
- * 确保项目根 package.json 的 devDependencies 里有 tsx。
- * workbench 的两处约定都靠 `npx tsx`(config.cli 的 `npx tsx cli.ts`、.mcp.json 的
- * `npx tsx server/mcp.ts`),根缺 tsx 时 npx 解析会间歇失败——CLI 命令抽风、MCP 服务拉不起,
- * agents 反复踩。幂等:已有 tsx、或根本没有 package.json,都不动。返回是否写入(写了需 pnpm install 生效)。
+ * 确保项目根 package.json 的 devDependencies 里有 tsx(裸项目的 TS 运行时,preset 也内置)。
+ * 根已有 package.json 但缺 tsx 时幂等补上;已有 tsx、或根本没有 package.json 都不动。
+ * 返回是否写入(写了需 pnpm install 生效)。
  */
 function ensureRootTsx(root: string): boolean {
   const pkgPath = join(root, "package.json")
@@ -185,7 +184,7 @@ export function initProject(root: string, opts: InitOptions): InitResult {
 
   const adapters = resolvePlatforms(config.platforms)
   const server: McpServer = {
-    name: "workbench",
+    name: "opcflow",
     command: "npx",
     args: ["-y", PKG_NAME, "mcp"]
   }

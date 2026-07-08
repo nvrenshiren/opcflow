@@ -1,6 +1,6 @@
 /**
  * 多平台 PreToolUse hook:approved 契约写闸门。
- * 宪法第六条:新闸门先跑观察期——writeGate 三档:
+ * 新闸门先跑观察期——writeGate 三档:
  *   off     不检查
  *   observe 只记 would_block 事件(误拦判据的数据源,人工每周标注),永不拦截 ← 默认
  *   enforce 拦截(平台各自的拒绝出口),观察期误拦率达标后由用户翻开
@@ -8,7 +8,7 @@
  */
 import { extractFilePath, hookPlatform, hookProjectDir, readStdinJson } from "./hook-input"
 
-/** 写门禁主逻辑;由 `workbench hook pre --platform=X` 或独立入口调用 */
+/** 写门禁主逻辑;由 `opcflow hook pre --platform=X` 或独立入口调用 */
 export async function writeGateHook(platform: string) {
   const input = await readStdinJson()
   const filePath = extractFilePath(input)
