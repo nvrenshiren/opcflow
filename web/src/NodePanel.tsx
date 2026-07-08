@@ -259,6 +259,7 @@ export function NodePanel({
           )
         }
         destroyOnHidden
+        styles={{ body: { display: "flex", flexDirection: "column" } }}
       >
         {viewing && <ArtifactViewer artifact={viewing} />}
       </Drawer>
