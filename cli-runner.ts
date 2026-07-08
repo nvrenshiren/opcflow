@@ -123,19 +123,35 @@ const PRIORITY_PROVIDERS = [
   "mistral", "meta", "groq", "qwen", "moonshotai", "zhipuai", "z-ai", "cohere"
 ]
 
-/** models.dev:拉取支持 tool_call 的模型清单(provider/model 串),一线 provider 优先;失败返回空 */
-async function fetchToolCallModels(): Promise<string[]> {
+interface ProviderInfo {
+  id: string
+  name: string
+  models: { id: string; name: string }[]
+}
+
+/**
+ * models.dev:按 provider 组织的 tool_call 模型。
+ * 供应商展示 provider.name、模型展示 model.name,选定值取 model.id;一线 provider 优先。失败返回空。
+ */
+async function fetchProviders(): Promise<ProviderInfo[]> {
   try {
     const res = await fetch("https://models.dev/api.json")
-    const j = (await res.json()) as Record<string, { models?: Record<string, { tool_call?: boolean }> }>
-    const out: string[] = []
-    for (const [p, v] of Object.entries(j))
-      for (const [m, mv] of Object.entries(v.models ?? {})) if (mv.tool_call) out.push(`${p}/${m}`)
-    const rank = (m: string) => {
-      const i = PRIORITY_PROVIDERS.indexOf(m.split("/")[0])
+    const j = (await res.json()) as Record<
+      string,
+      { id?: string; name?: string; models?: Record<string, { id?: string; name?: string; tool_call?: boolean }> }
+    >
+    const providers: ProviderInfo[] = []
+    for (const [pid, pv] of Object.entries(j)) {
+      const models = Object.entries(pv.models ?? {})
+        .filter(([, mv]) => mv.tool_call)
+        .map(([mid, mv]) => ({ id: mv.id ?? mid, name: mv.name ?? mid }))
+      if (models.length) providers.push({ id: pv.id ?? pid, name: pv.name ?? pid, models })
+    }
+    const rank = (id: string) => {
+      const i = PRIORITY_PROVIDERS.indexOf(id)
       return i === -1 ? PRIORITY_PROVIDERS.length : i
     }
-    return [...new Set(out)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    return providers.sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name))
   } catch {
     return []
   }
@@ -150,7 +166,7 @@ interface InitAnswers {
 
 /** 交互式引导:inquirer 提示选语言 / 平台(多选)/ 端 / 模型(models.dev 搜索补全) */
 async function promptInit(): Promise<InitAnswers> {
-  const { checkbox, input, search, select } = await import("@inquirer/prompts")
+  const { checkbox, input, select } = await import("@inquirer/prompts")
 
   const language = await select<"zh" | "en">({
     message: "语言 / Language",
@@ -177,22 +193,28 @@ async function promptInit(): Promise<InitAnswers> {
     .map(s => s.trim())
     .filter(Boolean)
 
-  const models = await fetchToolCallModels()
+  const providers = await fetchProviders()
   const modelObj: Record<string, string> = {}
   for (const p of platforms) {
-    const picked = await search<string>({
-      message: zh ? `${p} 模型(输入过滤;选"默认"用平台缺省)` : `${p} model (type to filter)`,
-      pageSize: 12,
-      source: async term => {
-        const def = { name: zh ? "(默认 / default)" : "(default)", value: "" }
-        const list = models
-          .filter(m => !term || m.toLowerCase().includes(term.toLowerCase()))
-          .slice(0, 40)
-          .map(m => ({ name: m, value: m }))
-        return [def, ...list]
-      }
+    if (!providers.length) break // models.dev 不可用 → 全部用平台默认
+    const provId = await select<string>({
+      message: zh ? `${p} —— 供应商(选“默认”用该平台缺省模型)` : `${p} — provider ("default" keeps the platform default)`,
+      choices: [
+        { name: zh ? "(默认 / default)" : "(default)", value: "" },
+        ...providers.map(pr => ({ name: pr.name, value: pr.id }))
+      ],
+      pageSize: 12
     })
-    if (picked) modelObj[p] = picked
+    if (!provId) continue
+    const prov = providers.find(pr => pr.id === provId)
+    if (!prov) continue
+    const modelId = await select<string>({
+      message: zh ? `${p} —— 模型` : `${p} — model`,
+      choices: prov.models.map(m => ({ name: m.name, value: m.id })),
+      pageSize: 12
+    })
+    // OpenCode 的 model 字段要 provider/model 格式;其余平台存纯 model id
+    if (modelId) modelObj[p] = p === "opencode" ? `${provId}/${modelId}` : modelId
   }
 
   return { platforms, endpoints, model: Object.keys(modelObj).length ? modelObj : undefined, language }
