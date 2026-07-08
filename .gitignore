@@ -8,3 +8,6 @@ web/dist
 .mcp.json
 workbench.config.json
 .workbench/
+
+# 本地测试项目(不提交)
+project/
