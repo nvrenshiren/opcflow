@@ -4,9 +4,5 @@ import { defineConfig } from "vite"
 export default defineConfig({
   root: "web",
   plugins: [react()],
-  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 2048 },
-  server: {
-    port: 5621,
-    proxy: { "/api": "http://127.0.0.1:5620" }
-  }
+  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 2048 }
 })
