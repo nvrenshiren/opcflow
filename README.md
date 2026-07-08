@@ -13,6 +13,8 @@
 
 **简体中文** · [English](README.en.md)
 
+<img src="screen.png" alt="opcflow 可视化工作台 —— artifact 树 + 待审队列 diff + 实时渲染" width="840" />
+
 </div>
 
 ---

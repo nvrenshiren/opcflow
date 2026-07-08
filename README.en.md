@@ -13,6 +13,8 @@ One template turns Claude Code / Codex / OpenCode / Cursor into a contract-gover
 
 [简体中文](README.md) · **English**
 
+<img src="screen.png" alt="opcflow visual workbench — artifact tree + review-queue diff + live rendering" width="840" />
+
 </div>
 
 ---
