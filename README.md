@@ -129,93 +129,30 @@ flowchart LR
 > `docs/design/prototypes/<端>/<模块>/<页面>.html`,`scan` 登记后照常走 👍 放行——两条路径产出的原型
 > 在体系里等价,都要过用户 👍。
 
-## CLI 命令参数
+## CLI 命令
 
-所有命令:`opcflow <命令> [参数]`(全局装后即用;或 `npx -y @dawipong/opcflow <命令>` 免装)。全局 `--project=<路径>` 指定项目根(缺省向上找
-`workbench.config.json`)。文件路径参数用 `--` 分隔(如 `submit --actor=x -- <路径>`)。
+`opcflow <命令> [参数]`(全局装后即用;或 `npx -y @dawipong/opcflow <命令>` 免装)。审批类动作(approve/reject)只给人,AI 侧走 MCP 的 `wb_*` typed tools。
 
-**任务**
+**每条命令的作用、使用场景与参数见 [COMMANDS.md](COMMANDS.md)。** 速览:
 
-| 命令 | 作用 | 参数 |
-| --- | --- | --- |
-| `list` | 列任务 | `--status` `--assignee` `--module` `--role` `--endpoint` `--type` `--stale=true` |
-| `show <id>` | 任务详情(含事件/产出/stale) | `--json=true` |
-| `create` | 建任务 | 必填 `--role` `--creator`;选 `--module` `--endpoint` `--page` `--type` `--assignee` `--content` |
-| `claim <id>` | 领取(过 gate,自动快照依赖) | `--assignee=<角色>` |
-| `update <id>` | 改状态 | `--status` `--operator`;`--force=true` 越过 stale 拦截(留痕) |
-| `remove <id>` | 删任务 | `--operator`;`--force=true` |
-| `record <id> "备注"` | 加备注 | `--operator` |
-| `input <id> -- <路径>` | 补充申报 gate 之外读过的依赖 | `--operator` |
-
-**产出**
-
-| 命令 | 作用 | 参数 |
-| --- | --- | --- |
-| `output -- <路径>` | 登记产物(自动关联你领取的任务) | 必填 `--role` `--endpoint`;选 `--module` `--page` `--task` |
-| `artifacts` | 列产物 | `--module` `--endpoint` `--page` `--kind` |
-| `scan` | 全量扫描登记(docs + codeRoots),推导 DAG 边 | `--actor` |
-| `move --from=<> --to=<>` | 移动产物(保 id、不断审批) | `--actor` |
-
-**信任**
-
-| 命令 | 作用 | 参数 |
-| --- | --- | --- |
-| `submit -- <路径>` | 送审 | `--actor` |
-| `approve -- <路径>` | 批准 | `--actor`;`--trivial=true` 微调:re-bless 下游 + 关派生 review |
-| `reject -- <路径>` | 打回 | `--actor` `--reason` |
-| `feedback -- <路径>` | 反馈 / 👍👎(原型放行) | `--actor` `--verdict=+1\|-1`;选 `--comment` `--task` |
-| `dispute -- <路径>` | 对 approved 内容留痕异议,停下等裁决 | `--actor` `--reason` |
-| `queue` | 待审队列(pending + invalidated) | — |
-| `sync` | 对账:失效传播 + 沿图派 review | `--actor` |
-
-**流程**
-
-| 命令 | 作用 | 参数 |
-| --- | --- | --- |
-| `plan` | 契约全批后一键派发下游任务 | `--module`;选 `--creator` |
-| `qa <id>` | 记验收结果(fail 自动派 rework) | `--result=pass\|fail` `--operator`;fail 需 `--reason` |
-| `audit` | 模块契约对账报告(清算状态) | `--module` |
-| `graph` | 输出 Mermaid 依赖图 | `--module` |
-| `lint` | 跑协议 lint | 选 `--role` `--endpoint` |
-| `events` | 事件流 | `--taskId`/`<id>` `--module` `--event` `--limit` `--json` |
-| `intake` | 拉 GitHub issue 入队(标准道 / hotfix) | — |
-
-**进化 / 维护**
-
-| 命令 | 作用 | 参数 |
-| --- | --- | --- |
-| `retro` | 复盘:skill 候选 / Red Flag / 审批吞吐 | 选 `--module` `--json` |
-| `export` | 导出 events/feedback 为 jsonl | — |
-| `init` | 新项目引导 | `--endpoints`(必填);`--platforms` `--model` `--writehooks=false` `--preset=false` `--hooks=false` |
-| `gen-agents` | 从模板重生成 agent 定义 | — |
-| `register-meta` | 注册元产物(agent-def/skill/plan) | `--actor` |
-| `install-hooks` | 安装 git hooks | — |
-| `migrate` | 迁移旧库 | `--from=<路径>` |
-
-> AI 侧优先用 MCP 的 `wb_*` typed tools(与 CLI 同源同事务);**审批 approve/reject 刻意不暴露给 AI——那是你的动作**。
+- **任务** `list` · `show` · `create` · `claim` · `update` · `remove` · `record` · `input`
+- **产出** `output` · `artifacts` · `scan` · `move`
+- **信任** `submit` · `approve` · `reject` · `feedback` · `dispute` · `queue` · `sync`
+- **流程** `plan` · `qa` · `audit` · `graph` · `lint` · `events` · `intake`
+- **进化 / 维护** `retro` · `export` · `init` · `gen-agents` · `register-meta` · `install-hooks` · `migrate`
+- **服务与集成** `serve` · `mcp` · `hook` · `postcommit`(多由平台 / git 自动调用)
 
 ## 配置(workbench.config.json)
 
+`init` 生成、之后手工编辑,是每个项目的坐标系与纪律开关。**每个字段的作用、默认值与何时调,见 [CONFIG.md](CONFIG.md)。**
+
 ```jsonc
 {
-  "platforms": ["claude", "cursor"],          // 目标平台(init 选),缺省 ["claude"]
+  "platforms": ["claude", "cursor"],          // 目标平台
   "endpoints": ["service", "web"],            // 你的端
-  "pipeline": ["product-manager", "architect", "designer", "developer", "qa"], // 角色流水线(不含的角色不派任务)
-  "codeRoots": {                              // 【必填】每端代码目录,{module} 占位
-    "service": ["service/src/modules/{module}"],
-    "web": ["web/src/pages/{module}"]
-  },
-  "moduleMapping": { "userProfile": "user" }, // 细模块归并到粗模块
-  "machineChecks": { "enabled": false,        // developer complete 时跑
-    "service": ["cd service && npx tsc --noEmit"] },
-  "protocolLints": [                          // 能机器查的约定 → 降级为 lint(违例阻断 complete)
-    { "name": "no-page-size", "grep": "pageSize", "paths": ["service/src"] }
-  ],
-  "gates": {
-    "approvalMode": "warn",                   // warn=未批只警告 / enforce=阻断
-    "writeGate": "observe"                     // off / observe(只记录)/ enforce(拦改 approved 契约)
-  },
-  "git": { "taskTrailer": "off", "trailerKey": "Task" }  // on=提交注入 Task:#id 归因 trailer
+  "pipeline": ["product-manager", "architect", "designer", "developer", "qa"],
+  "codeRoots": { "service": ["service/src/modules/{module}"] },  // 【必填】每端代码目录,{module} 占位
+  "gates": { "approvalMode": "warn", "writeGate": "observe" }    // 审批 / 写门禁纪律档位
 }
 ```
 
