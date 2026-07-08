@@ -135,13 +135,13 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
                       fontSize: 12,
                       lineHeight: 1.5,
                       wordBreak: "break-all",
-                      color: "rgba(255,255,255,0.88)",
+                      color: "rgba(var(--wb-fg),0.88)",
                       fontWeight: 500
                     }}
                   >
                     {k}
                   </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "rgba(var(--wb-fg),0.45)", marginTop: 2 }}>
                     {t(
                       `正 ${g.posScore} / 负 ${g.negScore} · ${g.evidence.length} 条证据`,
                       `+${g.posScore} / -${g.negScore} · ${g.evidence.length} evidence`
@@ -197,13 +197,13 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
                           fontFamily: MONO,
                           fontSize: 12,
                           wordBreak: "break-all",
-                          color: "rgba(255,255,255,0.82)"
+                          color: "rgba(var(--wb-fg),0.82)"
                         }}
                       >
                         {e.path}
                       </div>
                       {e.comment && (
-                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{e.comment}</div>
+                        <div style={{ fontSize: 12, color: "rgba(var(--wb-fg),0.7)", marginTop: 4 }}>{e.comment}</div>
                       )}
                     </Card>
                   ))}

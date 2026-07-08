@@ -12,8 +12,8 @@ function PathText({ path, size = 13 }: { path: string; size?: number }) {
   const file = idx >= 0 ? path.slice(idx + 1) : path
   return (
     <span style={{ fontSize: size, fontFamily: MONO }}>
-      <span style={{ color: "rgba(255,255,255,0.35)" }}>{dir}</span>
-      <span style={{ color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>{file}</span>
+      <span style={{ color: "rgba(var(--wb-fg),0.35)" }}>{dir}</span>
+      <span style={{ color: "rgba(var(--wb-fg),0.85)", fontWeight: 500 }}>{file}</span>
     </span>
   )
 }
@@ -95,7 +95,7 @@ export function NodePanel({
           }}
           styles={{ body: { padding: "16px 20px" } }}
         >
-          <div style={{ fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, letterSpacing: 1, color: "rgba(var(--wb-fg),0.35)", marginBottom: 10 }}>
             {t("实时事件", "Live events")}
           </div>
           <EventFeed events={liveEvents} />
@@ -122,7 +122,7 @@ export function NodePanel({
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: "20px 28px 40px" }}>
       {coord && (
-        <div style={{ fontSize: 11, fontFamily: MONO, color: "rgba(255,255,255,0.35)", marginBottom: 2 }}>{coord}</div>
+        <div style={{ fontSize: 11, fontFamily: MONO, color: "rgba(var(--wb-fg),0.35)", marginBottom: 2 }}>{coord}</div>
       )}
       <Space align="baseline" style={{ marginBottom: 8 }}>
         <Typography.Title level={4} style={{ margin: 0, letterSpacing: -0.3 }}>
@@ -230,7 +230,7 @@ export function NodePanel({
                     title: t("更新时间", "Updated"),
                     dataIndex: "updated_at",
                     width: 170,
-                    render: t => <span style={{ fontFamily: MONO, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{t}</span>
+                    render: t => <span style={{ fontFamily: MONO, fontSize: 12, color: "rgba(var(--wb-fg),0.45)" }}>{t}</span>
                   }
                 ]}
               />
@@ -288,18 +288,18 @@ function EventFeed({ events }: { events: WbEvent[] }) {
             className="wb-hover-row"
             style={{ padding: "5px 8px", minWidth: 0 }}
           >
-            <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.32)", flexShrink: 0 }}>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(var(--wb-fg),0.32)", flexShrink: 0 }}>
               {e.created_at.slice(5, 19)}
             </span>
             <Tag bordered={false} color={eventColor(e.event)} style={{ margin: 0, fontSize: 11, flexShrink: 0 }}>
               {e.event}
             </Tag>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", flexShrink: 0 }}>{e.actor}</span>
+            <span style={{ fontSize: 12, color: "rgba(var(--wb-fg),0.65)", flexShrink: 0 }}>{e.actor}</span>
             {e.event === "note" && (
               <span
                 style={{
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
+                  color: "rgba(var(--wb-fg),0.45)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap"
@@ -314,7 +314,7 @@ function EventFeed({ events }: { events: WbEvent[] }) {
                   marginLeft: "auto",
                   fontFamily: MONO,
                   fontSize: 11,
-                  color: "rgba(255,255,255,0.3)",
+                  color: "rgba(var(--wb-fg),0.3)",
                   flexShrink: 0
                 }}
               >

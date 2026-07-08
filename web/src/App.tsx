@@ -1,9 +1,10 @@
-import { Badge, Button, Flex, Layout, Space, Switch, Tooltip, Tree, Typography, message } from "antd"
+import { Badge, Button, Flex, Layout, Segmented, Space, Switch, Tooltip, Tree, Typography, message } from "antd"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, type TreeNode, type WbEvent } from "./api"
 import { NodePanel } from "./NodePanel"
 import { ReviewQueue } from "./ReviewQueue"
 import { SkillCandidates } from "./SkillCandidates"
+import { useUiPrefs } from "./prefs"
 import { ACCENT, MONO, SURFACE } from "./ui"
 import { t } from "./i18n"
 
@@ -48,8 +49,8 @@ function toAntNode(n: TreeNode): AntNode {
               style={{
                 fontSize: 11,
                 fontFamily: MONO,
-                color: "rgba(255,255,255,0.38)",
-                background: "rgba(255,255,255,0.06)",
+                color: "rgba(var(--wb-fg),0.38)",
+                background: "rgba(var(--wb-fg),0.06)",
                 borderRadius: 8,
                 padding: "0 6px",
                 lineHeight: "16px"
@@ -68,6 +69,7 @@ function toAntNode(n: TreeNode): AntNode {
 export default function App() {
   const [tree, setTree] = useState<TreeNode | null>(null)
   const [includeMeta, setIncludeMeta] = useState(false)
+  const { lang, theme: themeMode, setLang, setTheme } = useUiPrefs()
   const [selected, setSelected] = useState<TreeNode | null>(null)
   const [liveEvents, setLiveEvents] = useState<WbEvent[]>([])
   const [queueCount, setQueueCount] = useState(0)
@@ -161,6 +163,24 @@ export default function App() {
         </Typography.Text>
         <span style={{ flex: 1 }} />
         <Space size={16}>
+          <Segmented
+            size="small"
+            value={lang}
+            onChange={v => setLang(v as "zh" | "en")}
+            options={[
+              { label: "中", value: "zh" },
+              { label: "EN", value: "en" }
+            ]}
+          />
+          <Segmented
+            size="small"
+            value={themeMode}
+            onChange={v => setTheme(v as "dark" | "light")}
+            options={[
+              { label: "🌙", value: "dark" },
+              { label: "☀", value: "light" }
+            ]}
+          />
           <Tooltip title={t("在树中显示 agent 定义 / skill / PLAN 等元产物", "Show meta artifacts (agent defs / skills / PLAN) in the tree")}>
             <Space size={6}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -190,7 +210,7 @@ export default function App() {
           theme="light"
           style={{ borderRight: `1px solid ${SURFACE.line}`, overflow: "auto", background: SURFACE.panel }}
         >
-          <div style={{ padding: "10px 12px 4px", fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.35)" }}>
+          <div style={{ padding: "10px 12px 4px", fontSize: 11, letterSpacing: 1, color: "rgba(var(--wb-fg),0.35)" }}>
             {t("项目结构", "Project structure")}
           </div>
           <Tree

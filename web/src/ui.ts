@@ -2,12 +2,19 @@
  * 设计基元(单一真相源):表面层次 / 强调色 / kind·event 语义色 / 等宽字体。
  * 原则:一个强调色(teal),状态色只用于状态;表面分层靠背景明度不靠阴影。
  */
+/** 表面层次:值为 CSS 变量,随 <html data-theme> 明暗切换(定义见 styles.css) */
 export const SURFACE = {
-  canvas: "#0f1012", // 画布(最底)
-  panel: "#17181b", // 面板(侧栏/卡片)
-  raised: "#1d1e23", // 悬浮(表头/引用块)
-  line: "#26272d", // 分隔线
-  lineStrong: "#2e2f36"
+  canvas: "var(--wb-canvas)", // 画布(最底)
+  panel: "var(--wb-panel)", // 面板(侧栏/卡片)
+  raised: "var(--wb-raised)", // 悬浮(表头/引用块)
+  line: "var(--wb-line)", // 分隔线
+  lineStrong: "var(--wb-line-strong)"
+} as const
+
+/** antd 算法/token 需要真 hex(CSS 变量无法做色彩推导);与 styles.css 的 --wb-* 对齐 */
+export const SEED = {
+  dark: { canvas: "#0f1012", panel: "#17181b", raised: "#1d1e23", line: "#26272d", lineStrong: "#2e2f36" },
+  light: { canvas: "#f6f7f9", panel: "#ffffff", raised: "#eef0f3", line: "#e4e6ea", lineStrong: "#d3d6dc" }
 } as const
 
 export const ACCENT = "#2fbdaf"

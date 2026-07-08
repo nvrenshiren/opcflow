@@ -6,9 +6,8 @@ import { useEffect, useId, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { api, type Artifact, type ArtifactDetail } from "../api"
+import { useUiPrefs } from "../prefs"
 import { MONO, SURFACE } from "../ui"
-
-mermaid.initialize({ startOnLoad: false, theme: "dark" })
 
 const LANG_BY_EXT: Record<string, string> = {
   ts: "typescript",
@@ -62,9 +61,11 @@ function registerPrisma(monaco: Monaco): void {
 }
 
 function Mermaid({ code }: { code: string }) {
+  const { theme } = useUiPrefs()
   const id = useId().replace(/[^a-zA-Z0-9]/g, "")
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    mermaid.initialize({ startOnLoad: false, theme: theme === "dark" ? "dark" : "default" })
     mermaid
       .render(`m${id}`, code)
       .then(({ svg }) => {
@@ -73,7 +74,7 @@ function Mermaid({ code }: { code: string }) {
       .catch(err => {
         if (ref.current) ref.current.innerText = `mermaid 渲染失败: ${err.message}`
       })
-  }, [code, id])
+  }, [code, id, theme])
   return <div ref={ref} />
 }
 
@@ -131,6 +132,7 @@ function PrototypeView({ artifact }: { artifact: Artifact }) {
 }
 
 function CodeDirView({ artifact }: { artifact: Artifact }) {
+  const { theme } = useUiPrefs()
   const [files, setFiles] = useState<{ rel: string; size: number }[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [content, setContent] = useState<string>("")
@@ -172,7 +174,7 @@ function CodeDirView({ artifact }: { artifact: Artifact }) {
         {selected && (
           <Editor
             height="100%"
-            theme="vs-dark"
+            theme={theme === "dark" ? "vs-dark" : "light"}
             beforeMount={registerPrisma}
             language={langOf(selected)}
             value={content}
@@ -236,6 +238,7 @@ function Actions({ artifact, onDone }: { artifact: Artifact; onDone: () => void 
 }
 
 export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
+  const { theme: themeMode } = useUiPrefs()
   const [detail, setDetail] = useState<ArtifactDetail | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -260,7 +263,7 @@ export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
     body = (
       <Editor
         height="100%"
-        theme="vs-dark"
+        theme={themeMode === "dark" ? "vs-dark" : "light"}
         beforeMount={registerPrisma}
         language={langOf(artifact.path)}
         value={detail.content ?? ""}

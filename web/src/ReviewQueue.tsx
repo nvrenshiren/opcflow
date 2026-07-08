@@ -184,8 +184,8 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
                     </Tag>
                   </Space>
                   <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.5, wordBreak: "break-all" }}>
-                    <span style={{ color: "rgba(255,255,255,0.35)" }}>{dir}</span>
-                    <span style={{ color: "rgba(255,255,255,0.88)", fontWeight: 500 }}>{file}</span>
+                    <span style={{ color: "rgba(var(--wb-fg),0.35)" }}>{dir}</span>
+                    <span style={{ color: "rgba(var(--wb-fg),0.88)", fontWeight: 500 }}>{file}</span>
                   </div>
                 </Card>
               )

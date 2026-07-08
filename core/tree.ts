@@ -30,11 +30,9 @@ export interface TreeNode {
   children: TreeNode[]
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "待领取",
-  in_progress: "进行中",
-  completed: "已完成",
-  cancelled: "已取消"
+const STATUS_LABEL: Record<string, Record<string, string>> = {
+  zh: { pending: "待领取", in_progress: "进行中", completed: "已完成", cancelled: "已取消" },
+  en: { pending: "unclaimed", in_progress: "in progress", completed: "done", cancelled: "cancelled" }
 }
 
 function worse(a: NodeHealth, b: NodeHealth): NodeHealth {
@@ -75,15 +73,16 @@ function coordHealth(ctx: Ctx, artifacts: TreeArtifact[], tasks: TreeTask[]): No
 
 /** phase:按 pipeline 顺序找到第一个未完成的角色 */
 function coordPhase(ctx: Ctx, tasks: TreeTask[]): string {
-  if (tasks.length === 0) return "未派发"
-  const pipeline = ctx.config.pipeline
-  for (const role of pipeline) {
+  const en = ctx.config.language === "en"
+  if (tasks.length === 0) return en ? "not dispatched" : "未派发"
+  const labels = STATUS_LABEL[en ? "en" : "zh"]
+  for (const role of ctx.config.pipeline) {
     const roleTasks = tasks.filter(t => t.role === role && t.status !== "cancelled")
     if (roleTasks.length === 0) continue
     const unfinished = roleTasks.find(t => t.status !== "completed")
-    if (unfinished) return `${role} ${STATUS_LABEL[unfinished.status] ?? unfinished.status}`
+    if (unfinished) return `${role} ${labels[unfinished.status] ?? unfinished.status}`
   }
-  return "全部完成"
+  return en ? "all done" : "全部完成"
 }
 
 function decorate(ctx: Ctx, a: ArtifactRow): TreeArtifact {
