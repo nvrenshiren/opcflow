@@ -166,7 +166,7 @@ interface InitAnswers {
 
 /** 交互式引导:inquirer 提示选语言 / 平台(多选)/ 端 / 模型(models.dev 搜索补全) */
 async function promptInit(): Promise<InitAnswers> {
-  const { checkbox, input, select } = await import("@inquirer/prompts")
+  const { input, select } = await import("@inquirer/prompts")
 
   const language = await select<"zh" | "en">({
     message: "语言 / Language",
@@ -177,11 +177,12 @@ async function promptInit(): Promise<InitAnswers> {
   })
   const zh = language === "zh"
 
-  const platforms = await checkbox({
-    message: zh ? "平台(空格勾选,回车确认)" : "Platforms (space to select, enter to confirm)",
-    choices: ALL_PLATFORMS.map(p => ({ name: p, value: p, checked: p === "claude" })),
-    required: true
+  const platform = await select<string>({
+    message: zh ? "平台" : "Platform",
+    choices: ALL_PLATFORMS.map(p => ({ name: p, value: p })),
+    default: "claude"
   })
+  const platforms = [platform]
 
   const endpoints = (
     await input({
