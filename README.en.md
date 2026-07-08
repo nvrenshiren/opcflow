@@ -204,7 +204,7 @@ root (otherwise it searches upward for `workbench.config.json`). File-path argum
 
 ```jsonc
 {
-  "platforms": ["claude", "cursor"],          // target platforms (picked by setup.sh), default ["claude"]
+  "platforms": ["claude", "cursor"],          // target platforms (picked by init), default ["claude"]
   "endpoints": ["service", "web"],            // your endpoints
   "pipeline": ["product-manager", "architect", "designer", "developer", "qa"], // role pipeline (excluded roles get no tasks)
   "codeRoots": {                              // [required] code dir per endpoint, {module} placeholder

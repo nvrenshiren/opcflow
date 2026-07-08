@@ -191,7 +191,7 @@ flowchart LR
 
 ```jsonc
 {
-  "platforms": ["claude", "cursor"],          // 目标平台(setup.sh 选),缺省 ["claude"]
+  "platforms": ["claude", "cursor"],          // 目标平台(init 选),缺省 ["claude"]
   "endpoints": ["service", "web"],            // 你的端
   "pipeline": ["product-manager", "architect", "designer", "developer", "qa"], // 角色流水线(不含的角色不派任务)
   "codeRoots": {                              // 【必填】每端代码目录,{module} 占位
