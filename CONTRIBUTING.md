@@ -18,8 +18,8 @@ pnpm run build          # 构建 web + 打包 dist/cli.mjs
 起本地工作台(连接项目的 `.workbench` 数据):
 
 ```bash
-pnpm run serve          # tsx cli.ts serve → http://127.0.0.1:5620
-# 或 pnpm start(先 build web 再 serve)
+pnpm run web:build              # 首次需先构建前端(否则 web/dist 缺失 → 404)
+pnpm exec tsx cli.ts serve      # 从源码起 server → http://127.0.0.1:5620
 ```
 
 开发期直接用源码跑 CLI:`pnpm exec tsx cli.ts <子命令>`(如 `list` / `scan` / `serve`)。

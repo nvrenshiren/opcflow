@@ -242,9 +242,8 @@ here.
 ## Scripts
 
 ```bash
-pnpm start                # start the opcflow (build frontend + start server; use for first run)
-pnpm run serve            # server only, no frontend build (404 if web/dist is missing)
-pnpm run web:build        # build the frontend
+pnpm run web:build        # build the frontend (required before first serve, else web/dist is missing → 404)
+pnpm exec tsx cli.ts serve  # start the workbench from source → http://127.0.0.1:5620
 pnpm test                 # core unit tests
 pnpm run typecheck        # type check
 pnpm run check:isolation  # zero business-coupling check
