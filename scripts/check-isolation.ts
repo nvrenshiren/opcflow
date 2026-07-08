@@ -9,7 +9,7 @@ const PKG_ROOT = join(import.meta.dirname, "..")
 
 const FORBIDDEN: { pattern: RegExp; reason: string }[] = [
   { pattern: /from\s+["'](?:\.\.\/)+(?:service|admin|weapp|app|packages)\//, reason: "禁止相对路径引用业务代码" },
-  { pattern: /from\s+["']@whzhuke\/(?!opcflow)/, reason: "禁止引用 @whzhuke 业务包" },
+  { pattern: /from\s+["']@dawipong\/(?!opcflow)/, reason: "禁止引用 @dawipong 业务包" },
   { pattern: /require\(\s*["'](?:\.\.\/)+(?:service|admin|weapp|app|packages)\//, reason: "禁止 require 业务代码" },
   { pattern: /["'][A-Za-z]:\\\\/, reason: "禁止硬编码绝对路径" }
 ]

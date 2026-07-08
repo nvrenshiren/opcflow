@@ -1,5 +1,5 @@
 /**
- * opcflow CLI —— 单一 bin 承载全部子命令(发布后经 `npx -y @whzhuke/opcflow <cmd>` 调用)。
+ * opcflow CLI —— 单一 bin 承载全部子命令(发布后经 `npx -y @dawipong/opcflow <cmd>` 调用)。
  * 项目侧不落 opcflow 源码:init 生成的 config.cli / .mcp.json / hooks 全指向本 bin。
  *   init                      新项目引导
  *   mcp                       起 MCP server(stdio),读 --project / cwd 的 .workbench

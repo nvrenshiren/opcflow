@@ -111,7 +111,7 @@ export interface WorkbenchConfig {
   git: { taskTrailer: "off" | "on"; trailerKey: string }
   legacyDb: string
   dataDir: string
-  /** CLI 命令前缀(注入 agent 定义与 gate 报错;默认 npx -y @whzhuke/opcflow) */
+  /** CLI 命令前缀(注入 agent 定义与 gate 报错;默认 npx -y @dawipong/opcflow) */
   cli: string
   /** kind 注册表覆盖(与 core 默认表深合并) */
   kinds?: Record<string, Record<string, unknown>>

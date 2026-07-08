@@ -19,7 +19,7 @@ body:
       label: 复现步骤
       description: 一步步怎么触发的(附上执行的命令)
       placeholder: |
-        1. 执行 `npx -y @whzhuke/opcflow ...`
+        1. 执行 `npx -y @dawipong/opcflow ...`
         2. ...
         3. 看到报错 ...
     validations:

@@ -5,7 +5,7 @@ import type { WorkbenchConfig } from "./types"
 export const CONFIG_FILENAME = "workbench.config.json"
 
 /** npm 包名 */
-export const PKG_NAME = "@whzhuke/opcflow"
+export const PKG_NAME = "@dawipong/opcflow"
 
 /**
  * 生成到项目里的命令前缀:统一走 npx 零安装调用已发布的包。
