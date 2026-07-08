@@ -33,6 +33,7 @@ async function main() {
     const { createServer: netServer } = await import("node:net")
     const ctx = openWorkbench(a.project ?? process.env.WORKBENCH_PROJECT)
     const start = parseInt(a.port ?? process.env.WORKBENCH_PORT ?? "5620")
+    const host = a.host ?? process.env.WORKBENCH_HOST ?? "0.0.0.0" // 默认对局域网开放;--host=127.0.0.1 只本机
     // 从 start 起找一个空闲端口(5620 被占用时自动 5621、5622…),避免直接崩
     const port = await new Promise<number>((resolve, reject) => {
       let p = start
@@ -47,14 +48,14 @@ async function main() {
           } else reject(e)
         })
         s.once("listening", () => s.close(() => resolve(p)))
-        s.listen(p, "127.0.0.1")
+        s.listen(p, host)
       }
       probe()
     })
     if (port !== start) console.error(`端口 ${start} 被占用,改用 ${port}`)
     const app = await createServer(ctx)
-    await app.listen({ port, host: "127.0.0.1" })
-    console.log(`Workbench: http://127.0.0.1:${port}  (project: ${ctx.root})`)
+    await app.listen({ port, host })
+    console.log(`Workbench: http://127.0.0.1:${port}  (host: ${host}, project: ${ctx.root})`)
     return
   }
 
