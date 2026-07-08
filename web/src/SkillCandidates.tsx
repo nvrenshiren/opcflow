@@ -2,37 +2,47 @@ import { Alert, Button, Card, Drawer, Empty, Flex, Space, Tag, Typography, messa
 import { useCallback, useEffect, useState } from "react"
 import { api, type DistillGroup, type SkillCandidatesReport } from "./api"
 import { MONO, SURFACE } from "./ui"
-
-const BUCKET = {
-  "skill-candidate": { color: "green", label: "skill 候选" },
-  "red-flag": { color: "red", label: "red-flag" },
-  observation: { color: "default", label: "观察" }
-} as const
+import { t } from "./i18n"
 
 /** 把一组证据 + guidance 组装成给 AI 的起草指令(复制到剪贴板,人带进 Claude 会话起草) */
 function buildDraftPrompt(g: DistillGroup, guidance: string[]): string {
   const lines: string[] = [
-    "依据以下 workbench 反馈证据,起草一份 skill(.claude/skills/<名称>/SKILL.md):",
+    t(
+      "依据以下 workbench 反馈证据,起草一份 skill(.claude/skills/<名称>/SKILL.md):",
+      "Based on the following workbench feedback evidence, draft a skill (.claude/skills/<name>/SKILL.md):"
+    ),
     "",
-    `分组:${g.endpoint}/${g.kind}    桶:${g.bucket}    正分 ${g.posScore} / 负分 ${g.negScore}`,
+    t(
+      `分组:${g.endpoint}/${g.kind}    桶:${g.bucket}    正分 ${g.posScore} / 负分 ${g.negScore}`,
+      `Group: ${g.endpoint}/${g.kind}    Bucket: ${g.bucket}    +score ${g.posScore} / -score ${g.negScore}`
+    ),
     "",
-    "证据(evidence):"
+    t("证据(evidence):", "Evidence:")
   ]
   for (const e of g.evidence) {
     lines.push(
-      `  [${e.verdict > 0 ? "+1" : "-1"}] ${e.path}${e.comment ? `  — ${e.comment}` : ""}  (${e.actor}, 权重 ${e.weight})`
+      t(
+        `  [${e.verdict > 0 ? "+1" : "-1"}] ${e.path}${e.comment ? `  — ${e.comment}` : ""}  (${e.actor}, 权重 ${e.weight})`,
+        `  [${e.verdict > 0 ? "+1" : "-1"}] ${e.path}${e.comment ? `  — ${e.comment}` : ""}  (${e.actor}, weight ${e.weight})`
+      )
     )
   }
   lines.push(
     "",
-    "起草要求:",
-    "- skill-candidate:把正例共性提炼成「正确做法」;",
-    "- red-flag:把负例 comment 写进「Red Flags」章节;",
-    "- 能机器查的约定,建议降级为 workbench.config.json 的 protocolLints 卡点;",
-    "- 起草后 `register-meta` 注册 + `submit --actor=<角色>` 送人审,approved 才生效。"
+    t("起草要求:", "Drafting requirements:"),
+    t("- skill-candidate:把正例共性提炼成「正确做法」;", "- skill-candidate: distill the shared traits of the positive cases into a “correct practice”;"),
+    t("- red-flag:把负例 comment 写进「Red Flags」章节;", "- red-flag: write the negative-case comments into the “Red Flags” section;"),
+    t(
+      "- 能机器查的约定,建议降级为 workbench.config.json 的 protocolLints 卡点;",
+      "- for machine-checkable conventions, prefer downgrading them to protocolLints gates in workbench.config.json;"
+    ),
+    t(
+      "- 起草后 `register-meta` 注册 + `submit --actor=<角色>` 送人审,approved 才生效。",
+      "- after drafting, register with `register-meta` + `submit --actor=<role>` for human review; only takes effect once approved."
+    )
   )
   if (guidance.length) {
-    lines.push("", "引擎 guidance:")
+    lines.push("", t("引擎 guidance:", "Engine guidance:"))
     guidance.forEach(x => lines.push(`  · ${x}`))
   }
   return lines.join("\n")
@@ -59,13 +69,19 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
   const copyDraft = async (g: DistillGroup) => {
     try {
       await navigator.clipboard.writeText(buildDraftPrompt(g, report?.guidance ?? []))
-      message.success("起草指令已复制,粘贴到 Claude Code 会话即可起草 skill")
+      message.success(t("起草指令已复制,粘贴到 Claude Code 会话即可起草 skill", "Draft instruction copied — paste it into a Claude Code session to draft the skill"))
     } catch {
-      message.error("复制失败(剪贴板权限?),可手动选中证据文本")
+      message.error(t("复制失败(剪贴板权限?),可手动选中证据文本", "Copy failed (clipboard permission?) — you can select the evidence text manually"))
     }
   }
 
   const groups = report?.groups ?? []
+
+  const BUCKET = {
+    "skill-candidate": { color: "green", label: t("skill 候选", "Skill candidate") },
+    "red-flag": { color: "red", label: "red-flag" },
+    observation: { color: "default", label: t("观察", "Observation") }
+  } as const
 
   return (
     <Drawer
@@ -74,10 +90,13 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
       width="72%"
       title={
         <Space size={8}>
-          <span>经验提炼</span>
+          <span>{t("经验提炼", "Distill")}</span>
           <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
             {report
-              ? `${report.candidates} 个 skill 候选 · ${report.redFlags} 个 red-flag · 半衰期 ${report.halfLifeDays} 天`
+              ? t(
+                  `${report.candidates} 个 skill 候选 · ${report.redFlags} 个 red-flag · 半衰期 ${report.halfLifeDays} 天`,
+                  `${report.candidates} skill candidate(s) · ${report.redFlags} red-flag(s) · half-life ${report.halfLifeDays} day(s)`
+                )
               : ""}
           </Typography.Text>
         </Space>
@@ -85,7 +104,7 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
       destroyOnHidden
     >
       {groups.length === 0 ? (
-        <Empty description="暂无达阈值的 skill 候选 / red-flag(继续积累 👍👎 与 QA 反馈)" />
+        <Empty description={t("暂无达阈值的 skill 候选 / red-flag(继续积累 👍👎 与 QA 反馈)", "No skill candidates / red-flags above threshold yet (keep gathering 👍👎 and QA feedback)")} />
       ) : (
         <Flex gap={16} style={{ height: "100%" }}>
           <div style={{ width: 300, overflow: "auto", paddingRight: 4, flexShrink: 0 }}>
@@ -123,7 +142,10 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
                     {k}
                   </div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-                    正 {g.posScore} / 负 {g.negScore} · {g.evidence.length} 条证据
+                    {t(
+                      `正 ${g.posScore} / 负 ${g.negScore} · ${g.evidence.length} 条证据`,
+                      `+${g.posScore} / -${g.negScore} · ${g.evidence.length} evidence`
+                    )}
                   </div>
                 </Card>
               )
@@ -134,10 +156,10 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
               <>
                 <Space style={{ marginBottom: 12, flexShrink: 0 }}>
                   <Button type="primary" onClick={() => copyDraft(active)}>
-                    复制起草指令
+                    {t("复制起草指令", "Copy draft instruction")}
                   </Button>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {BUCKET[active.bucket].label} · 正 {active.posScore} / 负 {active.negScore}
+                    {BUCKET[active.bucket].label} · {t(`正 ${active.posScore} / 负 ${active.negScore}`, `+${active.posScore} / -${active.negScore}`)}
                   </Typography.Text>
                 </Space>
                 <Alert
@@ -146,8 +168,8 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
                   style={{ marginBottom: 12 }}
                   message={
                     active.bucket === "red-flag"
-                      ? "负例达阈值:把这些 comment 提炼进 skill 的 Red Flags 章节"
-                      : "正例达阈值:把共性提炼成 skill 的正确做法。起草 → 人审 approved 才生效"
+                      ? t("负例达阈值:把这些 comment 提炼进 skill 的 Red Flags 章节", "Negative cases above threshold: distill these comments into the skill's Red Flags section")
+                      : t("正例达阈值:把共性提炼成 skill 的正确做法。起草 → 人审 approved 才生效", "Positive cases above threshold: distill the shared traits into the skill's correct practice. Draft → human review; only takes effect once approved")
                   }
                 />
                 <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
@@ -167,7 +189,7 @@ export function SkillCandidates({ open, onClose }: { open: boolean; onClose: () 
                           {e.verdict > 0 ? "+1" : "-1"}
                         </Tag>
                         <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                          {e.actor} · 权重 {e.weight} · {e.createdAt}
+                          {e.actor} · {t(`权重 ${e.weight}`, `weight ${e.weight}`)} · {e.createdAt}
                         </Typography.Text>
                       </Space>
                       <div

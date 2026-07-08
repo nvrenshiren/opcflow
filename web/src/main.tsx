@@ -1,15 +1,29 @@
 import { ConfigProvider, theme } from "antd"
+import enUS from "antd/locale/en_US"
 import zhCN from "antd/locale/zh_CN"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
+import { LANG, setLang } from "./i18n"
 import { ACCENT, SURFACE } from "./ui"
 import "./styles.css"
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ConfigProvider
-      locale={zhCN}
+// 启动时从 /api/meta 读语言(= workbench.config.json 的 language),定 UI 语言后再渲染
+async function boot() {
+  try {
+    const meta = await fetch("/api/meta").then(r => r.json())
+    if (meta?.language === "en") setLang("en")
+  } catch {
+    /* 拿不到就默认中文 */
+  }
+  render()
+}
+
+function render() {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ConfigProvider
+        locale={LANG === "en" ? enUS : zhCN}
       theme={{
         algorithm: theme.darkAlgorithm,
         token: {
@@ -36,7 +50,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       }}
     >
-      <App />
-    </ConfigProvider>
-  </React.StrictMode>
-)
+        <App />
+      </ConfigProvider>
+    </React.StrictMode>
+  )
+}
+
+boot()

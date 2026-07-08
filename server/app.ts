@@ -52,6 +52,7 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
 
   app.get("/api/meta", async () => ({
     root: ctx.root,
+    language: ctx.config.language,
     pipeline: ctx.config.pipeline,
     endpoints: ctx.config.endpoints,
     approvalMode: ctx.config.gates.approvalMode

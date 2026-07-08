@@ -212,9 +212,10 @@ export function buildTree(ctx: Ctx, opts: { includeMeta?: boolean } = {}): TreeN
         }
       : null
 
+  const en = ctx.config.language === "en"
   const projectLevel = artifacts.filter(a => !a.module)
-  const projectBucket = bucket("__project__", "项目级契约", projectLevel.filter(a => !registry[a.kind]?.meta))
-  const metaBucket = bucket("__meta__", "元产物(agent/skill/plan)", projectLevel.filter(a => registry[a.kind]?.meta))
+  const projectBucket = bucket("__project__", en ? "Project contracts" : "项目级契约", projectLevel.filter(a => !registry[a.kind]?.meta))
+  const metaBucket = bucket("__meta__", en ? "Meta (agent/skill/plan)" : "元产物(agent/skill/plan)", projectLevel.filter(a => registry[a.kind]?.meta))
 
   let rootHealth: NodeHealth = "ok"
   for (const b of [projectBucket, metaBucket]) if (b) rootHealth = worse(rootHealth, b.health)
@@ -222,7 +223,7 @@ export function buildTree(ctx: Ctx, opts: { includeMeta?: boolean } = {}): TreeN
 
   return {
     key: "__root__",
-    title: "项目",
+    title: en ? "Project" : "项目",
     level: "project",
     module: null,
     endpoint: null,

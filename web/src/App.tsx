@@ -5,6 +5,7 @@ import { NodePanel } from "./NodePanel"
 import { ReviewQueue } from "./ReviewQueue"
 import { SkillCandidates } from "./SkillCandidates"
 import { ACCENT, MONO, SURFACE } from "./ui"
+import { t } from "./i18n"
 
 const HEALTH_COLOR: Record<string, string> = {
   ok: "#52c41a",
@@ -82,7 +83,12 @@ export default function App() {
     api.skillCandidates().then(r => {
       const n = r.candidates + r.redFlags
       if (prevSkill.current >= 0 && n > prevSkill.current) {
-        message.info(`反馈提炼出 ${r.candidates} 个 skill 候选 / ${r.redFlags} 个 red-flag,见「经验提炼」`)
+        message.info(
+          t(
+            `反馈提炼出 ${r.candidates} 个 skill 候选 / ${r.redFlags} 个 red-flag,见「经验提炼」`,
+            `Distilled ${r.candidates} skill candidate(s) / ${r.redFlags} red-flag(s) — see "Distill"`
+          )
+        )
       }
       prevSkill.current = n
       setSkillCount(n)
@@ -95,7 +101,12 @@ export default function App() {
 
   const runSync = async () => {
     const s = await api.sync()
-    message.info(`对账完成:变更 ${s.changed},失效 ${s.invalidated},派 review ${s.reviewsSpawned}`)
+    message.info(
+      t(
+        `对账完成:变更 ${s.changed},失效 ${s.invalidated},派 review ${s.reviewsSpawned}`,
+        `Sync done: ${s.changed} changed, ${s.invalidated} invalidated, ${s.reviewsSpawned} review(s) dispatched`
+      )
+    )
     loadTree(includeMeta)
   }
 
@@ -146,29 +157,29 @@ export default function App() {
           Workbench
         </Typography.Text>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          spec-anchored 执行层
+          {t("spec-anchored 执行层", "spec-anchored execution layer")}
         </Typography.Text>
         <span style={{ flex: 1 }} />
         <Space size={16}>
-          <Tooltip title="在树中显示 agent 定义 / skill / PLAN 等元产物">
+          <Tooltip title={t("在树中显示 agent 定义 / skill / PLAN 等元产物", "Show meta artifacts (agent defs / skills / PLAN) in the tree")}>
             <Space size={6}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                元产物
+                {t("元产物", "Meta")}
               </Typography.Text>
               <Switch size="small" checked={includeMeta} onChange={setIncludeMeta} />
             </Space>
           </Tooltip>
           <Button size="small" onClick={runSync}>
-            Sync 对账
+            {t("Sync 对账", "Sync")}
           </Button>
           <Badge count={skillCount} size="small" offset={[-2, 2]} color="#722ed1">
             <Button size="small" onClick={() => setSkillOpen(true)}>
-              经验提炼
+              {t("经验提炼", "Distill")}
             </Button>
           </Badge>
           <Badge count={queueCount} size="small" offset={[-2, 2]}>
             <Button size="small" type="primary" onClick={() => setQueueOpen(true)}>
-              待审队列
+              {t("待审队列", "Review queue")}
             </Button>
           </Badge>
         </Space>
@@ -180,7 +191,7 @@ export default function App() {
           style={{ borderRight: `1px solid ${SURFACE.line}`, overflow: "auto", background: SURFACE.panel }}
         >
           <div style={{ padding: "10px 12px 4px", fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.35)" }}>
-            项目结构
+            {t("项目结构", "Project structure")}
           </div>
           <Tree
             treeData={antTree}

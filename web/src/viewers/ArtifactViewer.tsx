@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { api, type Artifact, type ArtifactDetail } from "../api"
 import { MONO, SURFACE } from "../ui"
+import { t } from "../i18n"
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" })
 
@@ -40,7 +41,7 @@ function Mermaid({ code }: { code: string }) {
         if (ref.current) ref.current.innerHTML = svg
       })
       .catch(err => {
-        if (ref.current) ref.current.innerText = `mermaid 渲染失败: ${err.message}`
+        if (ref.current) ref.current.innerText = t(`mermaid 渲染失败: ${err.message}`, `Mermaid render failed: ${err.message}`)
       })
   }, [code, id])
   return <div ref={ref} />
@@ -69,14 +70,13 @@ export function MarkdownView({ content }: { content: string }) {
   )
 }
 
-const VIEWPORTS = [
-  { icon: <MobileOutlined />, value: 375, tip: "375 · 手机 (weapp/app)" },
-  { icon: <TabletOutlined />, value: 768, tip: "768 · 平板" },
-  { icon: <DesktopOutlined />, value: 1280, tip: "1280 · 桌面 (admin/pc)" }
-]
-
 function PrototypeView({ artifact }: { artifact: Artifact }) {
   const [width, setWidth] = useState(artifact.endpoint === "admin" ? 1280 : 375)
+  const VIEWPORTS = [
+    { icon: <MobileOutlined />, value: 375, tip: t("375 · 手机 (weapp/app)", "375 · Mobile (weapp/app)") },
+    { icon: <TabletOutlined />, value: 768, tip: t("768 · 平板", "768 · Tablet") },
+    { icon: <DesktopOutlined />, value: 1280, tip: t("1280 · 桌面 (admin/pc)", "1280 · Desktop (admin/pc)") }
+  ]
   return (
     <div>
       <Radio.Group
@@ -169,7 +169,7 @@ function Actions({ artifact, onDone }: { artifact: Artifact; onDone: () => void 
     <Space>
       {isFeedbackKind && (
         <>
-          <Button size="small" onClick={() => act(() => api.feedback(artifact.id, 1), artifact.kind === "prototype" ? "👍 已放行" : "👍 已记录")}>
+          <Button size="small" onClick={() => act(() => api.feedback(artifact.id, 1), artifact.kind === "prototype" ? t("👍 已放行", "👍 Released") : t("👍 已记录", "👍 Recorded"))}>
             👍
           </Button>
           <Button size="small" onClick={() => setNegOpen(true)}>
@@ -178,21 +178,21 @@ function Actions({ artifact, onDone }: { artifact: Artifact; onDone: () => void 
         </>
       )}
       {!isFeedbackKind && artifact.review_status === "draft" && (
-        <Button size="small" onClick={() => act(() => api.submit(artifact.id), "已送审")}>
-          送审
+        <Button size="small" onClick={() => act(() => api.submit(artifact.id), t("已送审", "Submitted"))}>
+          {t("送审", "Submit")}
         </Button>
       )}
       {!isFeedbackKind && (artifact.review_status === "pending" || artifact.review_status === "invalidated") && (
-        <Button size="small" type="primary" onClick={() => act(() => api.approve(artifact.id), "已审批通过")}>
-          通过
+        <Button size="small" type="primary" onClick={() => act(() => api.approve(artifact.id), t("已审批通过", "Approved"))}>
+          {t("通过", "Approve")}
         </Button>
       )}
       <Modal
         open={negOpen}
-        title="👎 原因(必填,进反馈与进化管道)"
+        title={t("👎 原因(必填,进反馈与进化管道)", "👎 Reason (required — feeds the feedback & evolution pipeline)")}
         onCancel={() => setNegOpen(false)}
         onOk={async () => {
-          await act(() => api.feedback(artifact.id, -1, negComment), "👎 已记录")
+          await act(() => api.feedback(artifact.id, -1, negComment), t("👎 已记录", "👎 Recorded"))
           setNegOpen(false)
           setNegComment("")
         }}
@@ -213,7 +213,7 @@ export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
   }, [artifact.id, reloadKey])
 
   if (!detail) return <Skeleton active paragraph={{ rows: 8 }} style={{ padding: "12px 4px" }} />
-  if (detail.missing) return <Alert type="warning" message={`文件已不在磁盘上: ${artifact.path}`} />
+  if (detail.missing) return <Alert type="warning" message={t(`文件已不在磁盘上: ${artifact.path}`, `File no longer on disk: ${artifact.path}`)} />
 
   let body: React.ReactNode
   if (detail.isDirectory) {
@@ -247,12 +247,12 @@ export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
         )}
         {artifact.reviewed_by && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            审批人 {artifact.reviewed_by} @ {artifact.reviewed_at}
+            {t("审批人", "Reviewed by")} {artifact.reviewed_by} @ {artifact.reviewed_at}
           </Typography.Text>
         )}
         {detail.feedback.length > 0 && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            反馈 {detail.feedback.filter(f => f.verdict > 0).length}👍 / {detail.feedback.filter(f => f.verdict < 0).length}👎
+            {t("反馈", "Feedback")} {detail.feedback.filter(f => f.verdict > 0).length}👍 / {detail.feedback.filter(f => f.verdict < 0).length}👎
           </Typography.Text>
         )}
         <Actions artifact={artifact} onDone={() => setReloadKey(k => k + 1)} />

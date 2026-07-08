@@ -3,20 +3,7 @@ import { useEffect, useState } from "react"
 import { api, type Artifact, type Task, type TreeNode, type WbEvent } from "./api"
 import { ArtifactViewer } from "./viewers/ArtifactViewer"
 import { eventColor, kindColor, MONO, SURFACE } from "./ui"
-
-const REVIEW_TAG: Record<string, { color: string; text: string }> = {
-  draft: { color: "default", text: "草稿" },
-  pending: { color: "gold", text: "待审" },
-  approved: { color: "green", text: "已审批" },
-  invalidated: { color: "red", text: "已失效" }
-}
-
-const STATUS_TAG: Record<string, { color: string; text: string }> = {
-  pending: { color: "default", text: "待领取" },
-  in_progress: { color: "blue", text: "进行中" },
-  completed: { color: "green", text: "已完成" },
-  cancelled: { color: "red", text: "已取消" }
-}
+import { t } from "./i18n"
 
 /** 路径拆分:目录弱化,文件名强调 */
 function PathText({ path, size = 13 }: { path: string; size?: number }) {
@@ -79,20 +66,24 @@ export function NodePanel({
           styles={{ body: { padding: "28px 32px" } }}
         >
           <Typography.Title level={4} style={{ margin: 0, letterSpacing: -0.3 }}>
-            验证是唯一瓶颈
+            {t("验证是唯一瓶颈", "Verification is the only bottleneck")}
           </Typography.Title>
           <Typography.Paragraph type="secondary" style={{ margin: "8px 0 20px", fontSize: 13 }}>
-            左侧树按 模块 → 端 → 页面 组织全部产物与任务;你的动作只有三件——审批契约、给产物点
-            👍👎、回答裁决。其余都是 AI 与数据库的事。
+            {t(
+              "左侧树按 模块 → 端 → 页面 组织全部产物与任务;你的动作只有三件——审批契约、给产物点 👍👎、回答裁决。其余都是 AI 与数据库的事。",
+              "The left tree organizes every artifact and task by module → endpoint → page. You have only three actions — approve contracts, 👍👎 artifacts, and answer disputes. Everything else is handled by the AI and the database."
+            )}
           </Typography.Paragraph>
           <Space>
             <Badge count={queueCount} size="small" offset={[-2, 2]}>
               <Button type="primary" onClick={onOpenQueue}>
-                处理待审队列
+                {t("处理待审队列", "Handle review queue")}
               </Button>
             </Badge>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {queueCount > 0 ? `${queueCount} 份契约等待你的裁决` : "队列已清空"}
+              {queueCount > 0
+                ? t(`${queueCount} 份契约等待你的裁决`, `${queueCount} contract(s) awaiting your decision`)
+                : t("队列已清空", "Queue is empty")}
             </Typography.Text>
           </Space>
         </Card>
@@ -105,12 +96,25 @@ export function NodePanel({
           styles={{ body: { padding: "16px 20px" } }}
         >
           <div style={{ fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>
-            实时事件
+            {t("实时事件", "Live events")}
           </div>
           <EventFeed events={liveEvents} />
         </Card>
       </div>
     )
+  }
+
+  const REVIEW_TAG: Record<string, { color: string; text: string }> = {
+    draft: { color: "default", text: t("草稿", "Draft") },
+    pending: { color: "gold", text: t("待审", "Pending") },
+    approved: { color: "green", text: t("已审批", "Approved") },
+    invalidated: { color: "red", text: t("已失效", "Invalidated") }
+  }
+  const STATUS_TAG: Record<string, { color: string; text: string }> = {
+    pending: { color: "default", text: t("待领取", "Unclaimed") },
+    in_progress: { color: "blue", text: t("进行中", "In progress") },
+    completed: { color: "green", text: t("已完成", "Completed") },
+    cancelled: { color: "red", text: t("已取消", "Cancelled") }
   }
 
   const coord = [node.module, node.endpoint, node.page].filter(Boolean).join(" / ")
@@ -135,10 +139,13 @@ export function NodePanel({
         items={[
           {
             key: "artifacts",
-            label: `产物 ${artifacts.length > 0 ? artifacts.length : ""}`,
+            label: t(
+              `产物 ${artifacts.length > 0 ? artifacts.length : ""}`,
+              `Artifacts ${artifacts.length > 0 ? artifacts.length : ""}`
+            ),
             children:
               artifacts.length === 0 ? (
-                <Empty description="该坐标暂无登记产物" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                <Empty description={t("该坐标暂无登记产物", "No artifacts registered at this coordinate")} image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
                 <List
                   size="small"
@@ -154,11 +161,11 @@ export function NodePanel({
                         actions={[
                           a.kind === "prototype" && a.endorsed ? (
                             <Tag bordered={false} color="green">
-                              👍 已放行
+                              {t("👍 已放行", "👍 Released")}
                             </Tag>
                           ) : null,
                           <Tag bordered={false} color={tag.color}>
-                            {a.review_status === "pending" && a.ever_approved ? "复审中(禁用)" : tag.text}
+                            {a.review_status === "pending" && a.ever_approved ? t("复审中(禁用)", "Re-reviewing (disabled)") : tag.text}
                           </Tag>
                         ].filter(Boolean)}
                       >
@@ -176,7 +183,10 @@ export function NodePanel({
           },
           {
             key: "tasks",
-            label: `任务 ${tasks.length > 0 ? tasks.length : ""}`,
+            label: t(
+              `任务 ${tasks.length > 0 ? tasks.length : ""}`,
+              `Tasks ${tasks.length > 0 ? tasks.length : ""}`
+            ),
             children: (
               <Table
                 size="small"
@@ -190,15 +200,15 @@ export function NodePanel({
                     width: 64,
                     render: id => <span style={{ fontFamily: MONO, fontSize: 12 }}>#{id}</span>
                   },
-                  { title: "角色", dataIndex: "role", width: 130 },
+                  { title: t("角色", "Role"), dataIndex: "role", width: 130 },
                   {
-                    title: "类型",
+                    title: t("类型", "Type"),
                     dataIndex: "type",
                     width: 90,
                     render: t => <Tag bordered={false}>{t}</Tag>
                   },
                   {
-                    title: "状态",
+                    title: t("状态", "Status"),
                     dataIndex: "status",
                     width: 130,
                     render: (s: string, row: Task) => (
@@ -214,10 +224,10 @@ export function NodePanel({
                       </Space>
                     )
                   },
-                  { title: "执行人", dataIndex: "assignee", width: 130 },
-                  { title: "内容", dataIndex: "content", ellipsis: true },
+                  { title: t("执行人", "Assignee"), dataIndex: "assignee", width: 130 },
+                  { title: t("内容", "Content"), dataIndex: "content", ellipsis: true },
                   {
-                    title: "更新时间",
+                    title: t("更新时间", "Updated"),
                     dataIndex: "updated_at",
                     width: 170,
                     render: t => <span style={{ fontFamily: MONO, fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{t}</span>
@@ -228,7 +238,7 @@ export function NodePanel({
           },
           {
             key: "timeline",
-            label: "实时事件",
+            label: t("实时事件", "Live events"),
             children: <EventFeed events={liveEvents} />
           }
         ]}
@@ -260,7 +270,7 @@ function EventFeed({ events }: { events: WbEvent[] }) {
   if (events.length === 0) {
     return (
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-        等待事件……(CLI / MCP 的任何操作会实时出现在这里)
+        {t("等待事件……(CLI / MCP 的任何操作会实时出现在这里)", "Waiting for events… (any CLI / MCP action shows up here in real time)")}
       </Typography.Text>
     )
   }

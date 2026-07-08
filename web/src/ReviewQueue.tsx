@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import { api, type Artifact } from "./api"
 import { MarkdownView } from "./viewers/ArtifactViewer"
 import { kindColor, MONO, SURFACE } from "./ui"
+import { t } from "./i18n"
 
 function DiffView({ id, path }: { id: number; path: string }) {
   const [diff, setDiff] = useState<{ approved: string | null; current: string | null } | null>(null)
@@ -23,8 +24,8 @@ function DiffView({ id, path }: { id: number; path: string }) {
       size="small"
       style={{ marginBottom: 8 }}
       options={[
-        { label: "渲染预览", value: "preview" },
-        { label: "文本对比", value: "diff" }
+        { label: t("渲染预览", "Preview"), value: "preview" },
+        { label: t("文本对比", "Text diff"), value: "diff" }
       ]}
       value={mode}
       onChange={v => setMode(v as "preview" | "diff")}
@@ -47,7 +48,7 @@ function DiffView({ id, path }: { id: number; path: string }) {
             background: SURFACE.panel
           }}
         >
-          <MarkdownView content={diff.current ?? "(空)"} />
+          <MarkdownView content={diff.current ?? t("(空)", "(empty)")} />
         </div>
       </Flex>
     )
@@ -57,8 +58,8 @@ function DiffView({ id, path }: { id: number; path: string }) {
     return (
       <Flex vertical style={{ height: "100%" }}>
         {toggle}
-        <Alert type="info" message="首次送审,无已批版本可比对——展示当前全文" style={{ marginBottom: 8 }} showIcon />
-        <pre style={{ ...paneStyle, flex: 1, minHeight: 0 }}>{diff.current ?? "(空)"}</pre>
+        <Alert type="info" message={t("首次送审,无已批版本可比对——展示当前全文", "First submission — no approved version to diff against; showing the full current content")} style={{ marginBottom: 8 }} showIcon />
+        <pre style={{ ...paneStyle, flex: 1, minHeight: 0 }}>{diff.current ?? t("(空)", "(empty)")}</pre>
       </Flex>
     )
   }
@@ -78,11 +79,11 @@ function DiffView({ id, path }: { id: number; path: string }) {
       {toggle}
       <Flex gap={8} style={{ flex: 1, minHeight: 0 }}>
         <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-          <Typography.Text type="secondary">已批版本</Typography.Text>
+          <Typography.Text type="secondary">{t("已批版本", "Approved version")}</Typography.Text>
           {render(diff.approved, currentLines, "rgba(255,77,79,0.22)")}
         </Flex>
         <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-          <Typography.Text type="secondary">当前版本</Typography.Text>
+          <Typography.Text type="secondary">{t("当前版本", "Current version")}</Typography.Text>
           {render(diff.current ?? "", approvedLines, "rgba(82,196,26,0.22)")}
         </Flex>
       </Flex>
@@ -138,16 +139,16 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
       width="82%"
       title={
         <Space size={8}>
-          <span>待审队列</span>
+          <span>{t("待审队列", "Review queue")}</span>
           <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-            {queue.length} 份等待裁决
+            {t(`${queue.length} 份等待裁决`, `${queue.length} awaiting decision`)}
           </Typography.Text>
         </Space>
       }
       destroyOnHidden
     >
       {queue.length === 0 ? (
-        <Empty description="队列已清空,没有待审产物" />
+        <Empty description={t("队列已清空,没有待审产物", "Queue is empty — no artifacts awaiting review")} />
       ) : (
         <Flex gap={16} style={{ height: "100%" }}>
           <div style={{ width: 330, overflow: "auto", paddingRight: 4, flexShrink: 0 }}>
@@ -179,7 +180,7 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
                       color={a.review_status === "invalidated" ? "red" : "gold"}
                       style={{ margin: 0 }}
                     >
-                      {a.review_status === "invalidated" ? "已失效" : a.ever_approved ? "复审中" : "待审"}
+                      {a.review_status === "invalidated" ? t("已失效", "Invalidated") : a.ever_approved ? t("复审中", "Re-reviewing") : t("待审", "Pending")}
                     </Tag>
                   </Space>
                   <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.5, wordBreak: "break-all" }}>
@@ -194,17 +195,17 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
             {active && (
               <>
                 <Space style={{ marginBottom: 12, flexShrink: 0 }}>
-                  <Button type="primary" onClick={() => act(() => api.approve(active.id), "已审批通过")}>
-                    通过
+                  <Button type="primary" onClick={() => act(() => api.approve(active.id), t("已审批通过", "Approved"))}>
+                    {t("通过", "Approve")}
                   </Button>
-                  <Button onClick={() => act(() => api.approve(active.id, true), "trivial 通过(已 re-bless 下游)")}>
-                    trivial 通过
+                  <Button onClick={() => act(() => api.approve(active.id, true), t("trivial 通过(已 re-bless 下游)", "Trivial approve (downstream re-blessed)"))}>
+                    {t("trivial 通过", "Trivial approve")}
                   </Button>
                   <Button danger onClick={() => setRejecting(true)}>
-                    打回
+                    {t("打回", "Reject")}
                   </Button>
                   {active.review_status === "invalidated" && (
-                    <Button onClick={() => act(() => api.submit(active.id), "已重新送审")}>重新送审</Button>
+                    <Button onClick={() => act(() => api.submit(active.id), t("已重新送审", "Resubmitted"))}>{t("重新送审", "Resubmit")}</Button>
                   )}
                 </Space>
                 <div style={{ flex: 1, minHeight: 0 }}>
@@ -217,11 +218,11 @@ export function ReviewQueue({ open, onClose, onActed }: { open: boolean; onClose
       )}
       <Modal
         open={rejecting}
-        title="打回原因(必填,会进事件流)"
+        title={t("打回原因(必填,会进事件流)", "Rejection reason (required — added to the event stream)")}
         onCancel={() => setRejecting(false)}
         onOk={async () => {
           if (!active) return
-          await act(() => api.reject(active.id, rejectReason), "已打回")
+          await act(() => api.reject(active.id, rejectReason), t("已打回", "Rejected"))
           setRejecting(false)
           setRejectReason("")
         }}
