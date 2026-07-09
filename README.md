@@ -159,8 +159,9 @@ flowchart LR
 ## 可视化工作台
 
 `opcflow serve` 起在 `http://127.0.0.1:5620`:artifact 树(状态实时变色)、markdown / mermaid / HTML 原型
-iframe / 代码渲染、**待审队列 diff**(approved 版本 vs 当前)、事件时间线、SSE 实时刷新。审批、打回、
-给原型 👍👎 都在这里点。
+iframe / 代码渲染、**待审队列 diff**(approved 版本 vs 当前)、**产出物关系图**(自动推导边 + 手动声明边:
+画布上拖线即声明、手动边可解绑、推导边由 scan 对账维护;手动边同样参与失效传播)、事件时间线、
+SSE 实时刷新。审批、打回、给原型 👍👎 都在这里点。
 
 ## 脚本
 
