@@ -1,6 +1,6 @@
-import { Badge, Button, Flex, Layout, Segmented, Space, Switch, Tooltip, Tree, Typography, message } from "antd"
+import { Badge, Button, Flex, Input, Layout, Segmented, Space, Switch, Tooltip, Tree, Typography, message } from "antd"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { api, type TreeNode, type WbEvent } from "./api"
+import { api, getActor, setActor, type TreeNode, type WbEvent } from "./api"
 import { NodePanel } from "./NodePanel"
 import { ReviewQueue } from "./ReviewQueue"
 import { RelationGraph } from "./RelationGraph"
@@ -78,6 +78,7 @@ export default function App() {
   const [skillCount, setSkillCount] = useState(0)
   const [skillOpen, setSkillOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
+  const [actorName, setActorName] = useState(getActor())
   const refreshTimer = useRef<number | null>(null)
   const prevSkill = useRef(-1) // -1 = 首次加载,不弹提醒;之后仅在计数增长时提醒
 
@@ -190,6 +191,19 @@ export default function App() {
               </Typography.Text>
               <Switch size="small" checked={includeMeta} onChange={setIncludeMeta} />
             </Space>
+          </Tooltip>
+          <Tooltip title={t("操作人身份:审批/反馈/建边的 actor 记录(多人共用工作台时区分是谁)", "Actor identity recorded on approvals/feedback/edges")}>
+            <Input
+              size="small"
+              style={{ width: 120 }}
+              prefix={<span style={{ opacity: 0.5, fontSize: 12 }}>{t("我是", "I am")}</span>}
+              value={actorName}
+              onChange={e => {
+                setActorName(e.target.value)
+                setActor(e.target.value)
+              }}
+              placeholder="user"
+            />
           </Tooltip>
           <Button size="small" onClick={runSync}>
             {t("Sync 对账", "Sync")}

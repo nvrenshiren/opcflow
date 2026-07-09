@@ -129,18 +129,33 @@ export interface GraphEdge {
   source: "derived" | "manual"
 }
 
-export const ACTOR = "user"
+/** 操作人身份:工作台头部可设置(localStorage 持久),多人共用一个工作台时区分是谁批的/谁反馈的 */
+const ACTOR_KEY = "wb-actor"
+export function getActor(): string {
+  try {
+    return localStorage.getItem(ACTOR_KEY)?.trim() || "user"
+  } catch {
+    return "user"
+  }
+}
+export function setActor(name: string): void {
+  try {
+    localStorage.setItem(ACTOR_KEY, name.trim())
+  } catch {
+    /* 隐私模式等场景静默降级 */
+  }
+}
 
 export const api = {
   tree: (includeMeta: boolean) => get<TreeNode>(`/api/tree?includeMeta=${includeMeta ? 1 : 0}`),
   reviewQueue: () => get<Artifact[]>(`/api/review-queue`),
   skillCandidates: () => get<SkillCandidatesReport>(`/api/skill-candidates`),
   diff: (id: number) => get<{ approved: string | null; current: string | null }>(`/api/artifact/${id}/diff`),
-  approve: (id: number, trivial = false) => post(`/api/artifact/${id}/approve`, { actor: ACTOR, trivial }),
-  reject: (id: number, reason: string) => post(`/api/artifact/${id}/reject`, { actor: ACTOR, reason }),
-  submit: (id: number) => post(`/api/artifact/${id}/submit`, { actor: ACTOR }),
+  approve: (id: number, trivial = false) => post(`/api/artifact/${id}/approve`, { actor: getActor(), trivial }),
+  reject: (id: number, reason: string) => post(`/api/artifact/${id}/reject`, { actor: getActor(), reason }),
+  submit: (id: number) => post(`/api/artifact/${id}/submit`, { actor: getActor() }),
   feedback: (id: number, verdict: 1 | -1, comment?: string) =>
-    post(`/api/artifact/${id}/feedback`, { actor: ACTOR, verdict, comment }),
+    post(`/api/artifact/${id}/feedback`, { actor: getActor(), verdict, comment }),
   sync: () => post<{ checked: number; changed: number; invalidated: number; tombstoned: number; reviewsSpawned: number }>(`/api/sync`, {}),
   node: (q: { module?: string; endpoint?: string; page?: string }) => {
     const params = new URLSearchParams()
@@ -166,24 +181,24 @@ export const api = {
     get<{ artifacts: { id: number; kind: string; path: string; review_status: string }[]; files: string[] }>(
       `/api/search?q=${encodeURIComponent(q)}`
     ),
-  addEdge: (fromId: number, toId: number) => post<GraphEdge>(`/api/edge`, { fromId, toId, actor: ACTOR }),
+  addEdge: (fromId: number, toId: number) => post<GraphEdge>(`/api/edge`, { fromId, toId, actor: getActor() }),
   removeEdge: async (id: number) => {
     const res = await fetch(`/api/edge/${id}`, {
       method: "DELETE",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ actor: ACTOR })
+      body: JSON.stringify({ actor: getActor() })
     })
     if (!res.ok) {
       const data = (await res.json()) as { error?: string }
       throw new Error(data.error ?? `HTTP ${res.status}`)
     }
   },
-  registerFile: (path: string) => post<{ id: number; path: string }>(`/api/artifact/register`, { path, actor: ACTOR }),
+  registerFile: (path: string) => post<{ id: number; path: string }>(`/api/artifact/register`, { path, actor: getActor() }),
   unregisterArtifact: async (id: number) => {
     const res = await fetch(`/api/artifact/${id}`, {
       method: "DELETE",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ actor: ACTOR })
+      body: JSON.stringify({ actor: getActor() })
     })
     if (!res.ok) {
       const data = (await res.json()) as { error?: string }
