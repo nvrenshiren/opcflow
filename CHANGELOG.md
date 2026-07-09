@@ -1,3 +1,15 @@
+# [0.4.0](https://github.com/nvrenshiren/opcflow/compare/v0.3.0...v0.4.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* HTML 原型 iframe 直接打开本地地址,相对资源正确解析 ([2b8d77f](https://github.com/nvrenshiren/opcflow/commit/2b8d77fd8d8de16a60d626ec803d6c692d4b5268))
+
+
+### Features
+
+* 坐标解析改为 config 可配的 coords 文法,支持自定义内层目录约定 ([e4fc3b2](https://github.com/nvrenshiren/opcflow/commit/e4fc3b2b80a184e4a6ada99e6d8c0a0520c0446b))
+
 # [0.3.0](https://github.com/nvrenshiren/opcflow/compare/v0.2.1...v0.3.0) (2026-07-08)
 
 
