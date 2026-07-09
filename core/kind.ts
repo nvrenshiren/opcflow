@@ -49,6 +49,10 @@ export const DEFAULT_KIND_REGISTRY: Record<ArtifactKind, KindSpec> = {
   skill: { level: "project", approval: "human", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "full", meta: true, pathPatterns: [".claude/skills/"] },
   "hook-script": { level: "project", approval: "human", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "full", meta: true, pathPatterns: [".claude/hooks/"] },
   plan: { level: "project", approval: "human", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "summary", meta: true, pathPatterns: ["docs/workbench/PLAN.md"] },
+  // 规则/记忆:平台原生读取生效的内容(approval:none——opcflow 只登记+跟踪变更进 draft,不设审卡);
+  // pathPatterns 按目标平台的 rulesDir/memoryDir 动态展开(getKindRegistry),仅目录文件形态可追
+  rule: { level: "project", approval: "none", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "full", meta: true },
+  memory: { level: "project", approval: "none", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "summary", meta: true },
 
   baseline: { level: "project", approval: "human", parents: [], drivesStale: true, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["ARCHITECTURE.md", "TECH.md"] },
   project: { level: "project", approval: "human", parents: [], drivesStale: true, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{prd}/project.md"] },
@@ -84,6 +88,14 @@ export function getKindRegistry(config: WorkbenchConfig): Record<ArtifactKind, K
   merged["hook-script"] = {
     ...merged["hook-script"],
     pathPatterns: uniq(adapters.map(a => a.hooksScanDir).filter((d): d is string => !!d).map(d => `${d}/`))
+  }
+  merged.rule = {
+    ...merged.rule,
+    pathPatterns: uniq(adapters.map(a => a.rulesDir).filter((d): d is string => !!d).map(d => `${d}/`))
+  }
+  merged.memory = {
+    ...merged.memory,
+    pathPatterns: uniq(adapters.map(a => a.memoryDir).filter((d): d is string => !!d).map(d => `${d}/`))
   }
   return merged
 }

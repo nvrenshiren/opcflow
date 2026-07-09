@@ -124,6 +124,37 @@ describe("元产物 draft 注册(零摩擦入体系)", () => {
     rmSync(root, { recursive: true, force: true })
   })
 
+  it("规则/记忆按平台约定落库:目录型跟踪、更新仍 draft(审不审无所谓,平台直接生效)", async () => {
+    const root2 = mkdtempSync(join(tmpdir(), "wb-meta-rm-"))
+    writeFileSync(join(root2, "workbench.config.json"), JSON.stringify({ platforms: ["claude", "cursor"] }))
+    mkdirSync(join(root2, ".claude/agent-memory/developer"), { recursive: true })
+    writeFileSync(join(root2, ".claude/agent-memory/developer/MEMORY.md"), "# 索引")
+    writeFileSync(join(root2, ".claude/agent-memory/developer/pitfalls.md"), "# 坑")
+    mkdirSync(join(root2, ".cursor/rules"), { recursive: true })
+    writeFileSync(join(root2, ".cursor/rules/style.mdc"), "规则:分页统一 take/skip")
+    const ctx2 = openWorkbenchAt(root2)
+
+    const r = registerMetaArtifacts(ctx2)
+    const kinds = r.registered.map(x => x.kind)
+    assert.equal(kinds.filter(k => k === "memory").length, 2)
+    assert.equal(kinds.filter(k => k === "rule").length, 1)
+
+    // 更新即留痕、状态保持 draft(approval: none,不进人审闸门)
+    const row = ctx2.db.prepare("SELECT * FROM artifacts WHERE path = '.cursor/rules/style.mdc'").get() as Parameters<typeof reviewStatus>[0] & { id: number; content_hash: string }
+    assert.equal(reviewStatus(row), "draft")
+    const before = row.content_hash
+    writeFileSync(join(root2, ".cursor/rules/style.mdc"), "规则:分页统一 take/skip;新增:禁 any")
+    const { refreshArtifact } = await import("../core/commands/artifact.commands")
+    const after = refreshArtifact(ctx2, { id: row.id })
+    assert.notEqual(after.content_hash, before)
+    assert.equal(reviewStatus(after), "draft")
+
+    // 幂等
+    assert.equal(registerMetaArtifacts(ctx2).registered.length, 0)
+    ctx2.db.close()
+    rmSync(root2, { recursive: true, force: true })
+  })
+
   it("agent-def/skill/plan 正确推断,注册即 draft,重跑幂等", () => {
     const first = registerMetaArtifacts(ctx)
     const kinds = Object.fromEntries(first.registered.map(r => [r.kind, r.path]))
@@ -140,7 +171,7 @@ describe("元产物 draft 注册(零摩擦入体系)", () => {
   })
 
   it("注册表:meta kinds 与 drivesStale/approval 定稿自洽", () => {
-    assert.deepEqual([...META_KINDS].sort(), ["agent-def", "hook-script", "plan", "skill"])
+    assert.deepEqual([...META_KINDS].sort(), ["agent-def", "hook-script", "memory", "plan", "rule", "skill"])
     assert.equal(DEFAULT_KIND_REGISTRY["prototype"].approval, "thumbs")
     assert.equal(DEFAULT_KIND_REGISTRY["prototype"].drivesStale, true)
     assert.equal(DEFAULT_KIND_REGISTRY["code"].drivesStale, false)

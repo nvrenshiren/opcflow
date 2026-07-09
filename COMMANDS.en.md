@@ -57,7 +57,7 @@ Every command: `opcflow <command> [args]` (after a global install; or `npx -y @d
 - **`export`** —— export all events / feedback as jsonl (into `.workbench/`). *When:* offline analysis, backup; runs on post-commit.
 - **`init`** `--endpoints [--platforms --model --language --hooks=false --preset=false --writehooks=false]` —— bootstrap an empty project (run bare in a terminal for interactive prompts). *When:* land agent/MCP/hooks/config/docs scaffolding for a new project in one go.
 - **`gen-agents`** —— regenerate each platform's agent definitions from templates. *When:* after changing config (endpoints/platforms/codeRoots) or upgrading templates.
-- **`register-meta`** `[--actor]` —— register meta artifacts (agent-def/skill/plan/hook-script) as draft into the system. *When:* after an AI drafts a skill, register it then go submit→human review.
+- **`register-meta`** `[--actor]` —— register meta artifacts as draft: agent-def/skill/plan/hook-script, plus **platform rules & memory** (claude's `.claude/agent-memory/`, cursor's `.cursor/rules/` — approval:none, registered & change-tracked only, no review gate since platforms consume them directly; hand-edited CLAUDE.md/AGENTS.md and Cursor's native non-file Memories are deliberately untracked). *When:* after an AI drafts a skill, register then submit→human review; register rules/memory when you want their changes in the event stream and relation graph.
 - **`install-hooks`** —— install git hooks (post-commit reconciliation). *When:* init ran in a non-git repo and you `git init`ed later.
 - **`migrate`** `--from=<path>` —— migrate a legacy `tasks/task.db` into the new DB (old tasks marked legacy, idempotent). *When:* upgrading from a pre-workbench database.
 

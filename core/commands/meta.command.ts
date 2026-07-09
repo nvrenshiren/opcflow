@@ -38,6 +38,9 @@ function metaSources(config: WorkbenchConfig): MetaSource[] {
     add({ dir: a.agentsDir, filter: n => n.endsWith(".md") || n.endsWith(".toml") })
     add({ dir: a.skillsDir, filter: n => n === "SKILL.md", recursive: true })
     if (a.hooksScanDir) add({ dir: a.hooksScanDir, recursive: true })
+    // 规则/记忆(仅目录文件形态的平台):登记+跟踪变更,approval:none 不设审卡,平台直接读取生效
+    if (a.rulesDir) add({ dir: a.rulesDir, filter: n => n.endsWith(".md") || n.endsWith(".mdc"), recursive: true })
+    if (a.memoryDir) add({ dir: a.memoryDir, filter: n => n.endsWith(".md"), recursive: true })
   }
   add({ dir: "docs/workbench", filter: n => n === "PLAN.md" })
   return sources

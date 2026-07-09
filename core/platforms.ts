@@ -58,6 +58,13 @@ export interface PlatformAdapter {
   skillsDir: string
   /** hook-script 扫描目录(仅 Claude 有独立 hooks/;其余为 null) */
   hooksScanDir: string | null
+  /**
+   * 规则/记忆的文件化落点(kind=rule/memory 的登记跟踪源;平台直接读取生效,opcflow 只登记+跟踪变更,不设审卡)。
+   * null = 该平台此类内容非目录文件形态(Cursor 原生 Memories;codex/opencode 的 AGENTS.md 与 Claude 的
+   * CLAUDE.md 是人常手改的单一大文件,纳入跟踪噪声大于收益,刻意不追)。
+   */
+  rulesDir: string | null
+  memoryDir: string | null
   /** 用户未指定模型时的兜底 */
   defaultModel: string
   /** 提醒(trust、UI 选模型等) */
@@ -152,6 +159,8 @@ const claude: PlatformAdapter = {
   agentsDir: ".claude/agents",
   skillsDir: ".claude/skills",
   hooksScanDir: ".claude/hooks",
+  rulesDir: null, // 规则载体是 CLAUDE.md(手改大文件,刻意不追)
+  memoryDir: ".claude/agent-memory",
   defaultModel: "opus",
   memoryBlock: (role, lang) => claudeMemory(role, lang),
   projectDirEnvVar: "CLAUDE_PROJECT_DIR",
@@ -203,6 +212,8 @@ const codex: PlatformAdapter = {
   agentsDir: ".codex/agents",
   skillsDir: ".agents/skills",
   hooksScanDir: null,
+  rulesDir: null, // 规则/记忆载体都是 AGENTS.md(手改大文件,刻意不追)
+  memoryDir: null,
   defaultModel: "gpt-5.1-codex",
   memoryBlock: (_role, lang) => agentsMdMemory("Codex", lang),
   projectDirEnvVar: "CODEX_PROJECT_DIR",
@@ -251,6 +262,8 @@ const opencode: PlatformAdapter = {
   agentsDir: ".opencode/agents",
   skillsDir: ".opencode/skills",
   hooksScanDir: null,
+  rulesDir: null, // 同 codex:AGENTS.md 承载,不追
+  memoryDir: null,
   defaultModel: "anthropic/claude-opus-4-8",
   memoryBlock: (_role, lang) => agentsMdMemory("OpenCode", lang),
   projectDirEnvVar: "OPENCODE_PROJECT_DIR",
@@ -326,6 +339,8 @@ const cursor: PlatformAdapter = {
   agentsDir: ".cursor/agents",
   skillsDir: ".cursor/skills",
   hooksScanDir: null,
+  rulesDir: ".cursor/rules",
+  memoryDir: null, // Cursor 原生 Memories 非文件形态,无法登记跟踪
   defaultModel: "claude-opus-4-8",
   memoryBlock: (_role, lang) => cursorMemory(lang),
   projectDirEnvVar: "CURSOR_PROJECT_DIR",

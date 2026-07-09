@@ -30,6 +30,8 @@ export type ArtifactKind =
   | "skill"
   | "hook-script"
   | "plan"
+  | "rule"
+  | "memory"
 
 export type ReviewStatus = "draft" | "pending" | "approved" | "invalidated"
 

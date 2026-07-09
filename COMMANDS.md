@@ -57,7 +57,7 @@
 - **`export`** —— 把 events / feedback 全量导出为 jsonl(落 `.workbench/`)。*场景:* 离线分析、备份;post-commit 自动跑。
 - **`init`** `--endpoints [--platforms --model --language --hooks=false --preset=false --writehooks=false]` —— 空项目引导(在终端裸跑进交互问答)。*场景:* 新项目一次性落地 agent/MCP/hooks/config/docs 骨架。
 - **`gen-agents`** —— 从模板重新生成各平台 agent 定义。*场景:* 改了 config(端/平台/codeRoots)或升级模板后刷新 agent。
-- **`register-meta`** `[--actor]` —— 把元产物(agent-def/skill/plan/hook-script)登记为 draft 入体系。*场景:* AI 写了 skill 草稿后登记,再走 submit→人审。
+- **`register-meta`** `[--actor]` —— 把元产物登记为 draft 入体系:agent-def/skill/plan/hook-script,以及**平台的规则与记忆**(claude 的 `.claude/agent-memory/`、cursor 的 `.cursor/rules/`——approval:none,只登记+跟踪变更,不设审卡,平台直接读取生效;CLAUDE.md/AGENTS.md 手改大文件与 Cursor 原生 Memories 刻意不追)。*场景:* AI 写了 skill 草稿后登记再走 submit→人审;规则/记忆变更想进事件流与关系图时登记。
 - **`install-hooks`** —— 安装 git hooks(post-commit 对账)。*场景:* init 时非 git 仓库、后来才 `git init`,补装。
 - **`migrate`** `--from=<路径>` —— 迁移旧 `tasks/task.db` 到新库(旧任务标 legacy,幂等防重)。*场景:* 从 pre-workbench 老库升级。
 
