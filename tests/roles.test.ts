@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, describe, it } from "node:test"
-import { claimTask, createTask, getRoleRegistry, openWorkbenchAt, registerOutput, updateTask, type Ctx } from "../core/index"
+import { claimTask, createTask, getRoleRegistry, openWorkbenchAt, planModule, registerOutput, scanArtifacts, updateTask, type Ctx } from "../core/index"
 
 describe("角色注册表:合并语义与 requires 规则化", () => {
   const root = mkdtempSync(join(tmpdir(), "wb-roles-"))
@@ -95,5 +95,63 @@ describe("producedKinds 形态匹配:产出分裂由注册表 dispatch.produces 
     registerOutput(ctx, { module: "land", role: "author" as never, endpoint: "common", filePath: "docs/prd/modules/land.md" })
     const r2 = updateTask(ctx, { id: moduleTask, status: "completed", operator: "author", force: true })
     assert.ok(Array.isArray(r2.warnings))
+  })
+})
+
+describe("plan 派发由注册表 dispatch 物化:自定义角色纯 config 进流水线", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-roles-plan-"))
+  writeFileSync(
+    join(root, "workbench.config.json"),
+    JSON.stringify({
+      pipeline: ["product-manager", "architect", "designer", "developer", "security-reviewer", "qa"],
+      roles: {
+        "security-reviewer": {
+          produces: ["doc"],
+          dispatch: [{ at: "page", content: "安审 {endpoint}/{page}" }]
+        }
+      }
+    })
+  )
+  const write = (rel: string, content: string) => {
+    mkdirSync(join(root, rel, ".."), { recursive: true })
+    writeFileSync(join(root, rel), content)
+  }
+  write("ARCHITECTURE.md", "# baseline")
+  write("docs/prd/project.md", "# 项目")
+  write("docs/prd/flows/land.md", "# flow")
+  write("docs/prd/modules/land.md", "# land PRD")
+  write("docs/prd/pages/admin/land/list.md", "# 列表页 PRD")
+  write("docs/architecture/database/land.md", "# db")
+  write("docs/architecture/api/admin/land.md", "# api")
+  const ctx: Ctx = openWorkbenchAt(root)
+  scanArtifacts(ctx)
+  after(() => {
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("默认拓扑保持(7)+ 自定义角色逐页任务(+1),content 模板插值", () => {
+    const s = planModule(ctx, "land")
+    // 默认:architect×2 + dev service + 设计系统(admin) + 页×(designer+developer+qa)=3 → 7;+security-reviewer 1 → 8
+    assert.equal(s.created.length, 8)
+    const sec = s.created.find(t => t.role === ("security-reviewer" as never))
+    assert.ok(sec, "自定义角色未被派发")
+    assert.equal(sec!.page, "land/list")
+    const row = ctx.db.prepare("SELECT content FROM tasks WHERE id = ?").get(sec!.id) as { content: string }
+    assert.equal(row.content, "安审 admin/land/list")
+    // 幂等
+    assert.equal(planModule(ctx, "land").created.length, 0)
+  })
+})
+
+describe("QA 闭环角色注册表化:rework 接锅方与复验角色由 produces 反查", () => {
+  it("ownerRoleOf:code→developer(兜底)、acceptance→qa、自定义 produces 反查", async () => {
+    const { ownerRoleOf } = await import("../core/roles")
+    const cfg = JSON.parse(JSON.stringify({}))
+    const base = { ...((await import("../core/config")).loadConfig("/nonexistent-x")) }
+    assert.equal(ownerRoleOf(base, "code"), "developer")
+    assert.equal(ownerRoleOf(base, "acceptance"), "qa")
+    assert.equal(ownerRoleOf({ ...base, roles: { verifier: { produces: ["acceptance"] } } } as never, "acceptance"), "qa") // 默认 qa 先命中(遍历序)
+    void cfg
   })
 })

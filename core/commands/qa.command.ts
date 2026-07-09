@@ -1,4 +1,5 @@
 import { logEvent } from "../events"
+import { ownerRoleOf } from "../roles"
 import type { ArtifactRow, Ctx } from "../types"
 import { feedbackArtifact } from "./artifact.commands"
 import { getTaskRow, updateTask } from "./task.commands"
@@ -23,7 +24,9 @@ export interface QaResultOutcome {
  */
 export function recordQaResult(ctx: Ctx, p: QaResultParams): QaResultOutcome {
   const task = getTaskRow(ctx, p.id)
-  if (task.role !== "qa") throw new Error(`任务 #${p.id} 不是 qa 任务`)
+  // 验收角色 = 产出 acceptance 的角色(注册表反查;缺省即 qa)
+  const acceptanceRole = ownerRoleOf(ctx.config, "acceptance") ?? "qa"
+  if (task.role !== acceptanceRole) throw new Error(`任务 #${p.id} 不是 ${acceptanceRole} 任务`)
   if (task.assignee !== p.operator) throw new Error(`只有执行人才能记录验收结果`)
   if (p.result === "fail" && !p.reason?.trim()) throw new Error(`验收不通过必须附原因,它将成为 rework 任务的内容`)
 
@@ -59,14 +62,15 @@ export function recordQaResult(ctx: Ctx, p: QaResultParams): QaResultOutcome {
     return { reworkTaskId: null }
   }
 
-  // fail → rework 任务
+  // fail → rework 任务:接锅方 = 产出 code 的角色(注册表反查;缺省 developer)
+  const reworkRole = ownerRoleOf(ctx.config, "code") ?? "developer"
   const tx2 = ctx.db.transaction(() => {
     const result = ctx.db
       .prepare(
         `INSERT INTO tasks (module, role, endpoint, page, type, status, assignee, creator, content)
-         VALUES (?, 'developer', ?, ?, 'rework', 'pending', 'developer', 'system', ?)`
+         VALUES (?, ?, ?, ?, 'rework', 'pending', ?, 'system', ?)`
       )
-      .run(task.module, task.endpoint, task.page, `[返工] QA #${task.id} 验收不通过:${p.reason}`)
+      .run(task.module, reworkRole, task.endpoint, task.page, reworkRole, `[返工] QA #${task.id} 验收不通过:${p.reason}`)
     const reworkId = result.lastInsertRowid as number
     logEvent(ctx.db, {
       entityType: "task",

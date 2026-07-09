@@ -4,7 +4,12 @@ import { validateClaim, validateComplete } from "../gates"
 import { gitHead, touchedByTaskTrailer, touchedSince } from "../git"
 import { closeLinkedIssue } from "../gh"
 import { contractKinds, normalizeModule } from "../kind"
-import { getRoleRegistry } from "../roles"
+import { getRoleRegistry, ownerRoleOf } from "../roles"
+
+/** 复验/验收角色的注册表反查小助手(缺省 qa) */
+function getRoleRegistryOwner(ctx: Ctx, kind: "acceptance"): string {
+  return ownerRoleOf(ctx.config, kind) ?? "qa"
+}
 import { normalizeRelPath } from "./artifact.commands"
 import { ownerRole } from "./sync.command"
 import type { ArtifactRow, Ctx, EventRow, Role, TaskRow, TaskStatus, TaskType } from "../types"
@@ -159,18 +164,20 @@ export function updateTask(
   return { id, warnings }
 }
 
-/** rework 完成 → 自动再派新一轮 qa(闭环收口;放本文件避免与 qa.command 环依赖) */
+/** rework 完成 → 自动再派新一轮复验(闭环收口;放本文件避免与 qa.command 环依赖)。
+ * 复验角色 = 产出 acceptance 的角色(注册表反查;缺省 qa)——注意不能用 reworkTask.role,那是接锅方(developer) */
 export function spawnFollowupQa(
   ctx: Ctx,
   reworkTask: { id: number; module: string | null; endpoint: string | null; page: string | null }
 ): number {
+  const qaRole = getRoleRegistryOwner(ctx, "acceptance")
   const tx = ctx.db.transaction(() => {
     const result = ctx.db
       .prepare(
         `INSERT INTO tasks (module, role, endpoint, page, type, status, assignee, creator, content)
-         VALUES (?, 'qa', ?, ?, 'qa', 'pending', 'qa', 'system', ?)`
+         VALUES (?, ?, ?, ?, 'qa', 'pending', ?, 'system', ?)`
       )
-      .run(reworkTask.module, reworkTask.endpoint, reworkTask.page, `[复验] rework #${reworkTask.id} 已完成,请重新验收`)
+      .run(reworkTask.module, qaRole, reworkTask.endpoint, reworkTask.page, qaRole, `[复验] rework #${reworkTask.id} 已完成,请重新验收`)
     const qaId = result.lastInsertRowid as number
     logEvent(ctx.db, {
       entityType: "task",

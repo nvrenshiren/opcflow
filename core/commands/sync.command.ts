@@ -4,6 +4,7 @@ import { reviewStatus } from "../derive"
 import { logEvent } from "../events"
 import { headCommitInfo } from "../git"
 import { getKindRegistry } from "../kind"
+import { ownerRoleOf } from "../roles"
 import type { ArtifactKind, ArtifactRow, Ctx, Role } from "../types"
 import { refreshArtifact, resolveArtifact } from "./artifact.commands"
 
@@ -15,13 +16,9 @@ export interface SyncSummary {
   reviewsSpawned: number
 }
 
-/** kind → 产出它的角色(roleProduces 反查,review 任务派给谁) */
+/** kind → 产出它的角色(角色注册表 produces 反查,review 任务派给谁);保留导出名兼容消费方 */
 export function ownerRole(ctx: Ctx, kind: ArtifactKind): Role | null {
-  for (const [role, kinds] of Object.entries(ctx.config.roleProduces)) {
-    if ((kinds as ArtifactKind[]).includes(kind)) return role as Role
-  }
-  if (kind === "code") return "developer"
-  return null
+  return ownerRoleOf(ctx.config, kind) as Role | null
 }
 
 /** 去重(按目标粒度):该上游已有 open review 的 (role|endpoint|module) 键集(经 task_inputs 关联) */

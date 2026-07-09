@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { reviewStatus } from "../derive"
 import { logEvent } from "../events"
 import { normalizeModule } from "../kind"
+import { getRoleRegistry } from "../roles"
 import type { ArtifactRow, Ctx, Role, TaskType } from "../types"
 import { createTask } from "./task.commands"
 
@@ -61,37 +62,30 @@ export function planModule(ctx: Ctx, moduleRaw: string, creator = "product-manag
   // 若只看行存在,已删页面会永远派发/取消不掉 —— 以磁盘存在性收敛)
   const pagePrds = byKind("page-prd").filter(a => a.endpoint && a.page && existsSync(join(ctx.root, a.path)))
   const endpoints = [...new Set(pagePrds.map(a => a.endpoint!))]
-  const desired: DesiredTask[] = [
-    { role: "architect", endpoint: "common", page: null, type: "build", assignee: "architect", content: `设计 ${module} 模块数据库` },
-    { role: "architect", endpoint: "service", page: null, type: "build", assignee: "architect", content: `设计 ${module} 模块 API 文档` },
-    { role: "developer", endpoint: "service", page: null, type: "build", assignee: "developer", content: `实现 ${module} 模块 service 端` }
-  ]
-  for (const endpoint of endpoints) {
-    const hasDesignSystem = artifacts.some(a => a.kind === "design-system" && a.endpoint === endpoint)
-    if (!hasDesignSystem) {
-      desired.push({
-        role: "designer",
-        endpoint,
-        page: null,
-        type: "build",
-        assignee: "designer",
-        content: `建立 ${endpoint} 端设计系统(该端首个页面设计前置)`
-      })
+
+  // 派发拓扑由角色注册表 dispatch 物化(按 pipeline 顺序;不在 pipeline 的角色天然不派)——
+  // 默认注册表逐字节编码旧手写数组;自定义角色纯 config 即进流水线
+  const registry = getRoleRegistry(ctx.config)
+  const interp = (tpl: string, v: { module: string; endpoint?: string | null; page?: string | null }) =>
+    tpl.replaceAll("{module}", v.module).replaceAll("{endpoint}", v.endpoint ?? "").replaceAll("{page}", v.page ?? "")
+
+  const desired: DesiredTask[] = []
+  for (const role of ctx.config.pipeline) {
+    for (const d of registry[role]?.dispatch ?? []) {
+      if (d.at === "module") {
+        desired.push({ role, endpoint: d.endpoint ?? null, page: null, type: d.type ?? "build", assignee: role, content: interp(d.content, { module }) })
+      } else if (d.at === "endpoint") {
+        for (const endpoint of endpoints) {
+          if (d.ifMissingKind && artifacts.some(a => a.kind === d.ifMissingKind && a.endpoint === endpoint)) continue
+          desired.push({ role, endpoint, page: null, type: d.type ?? "build", assignee: role, content: interp(d.content, { module, endpoint }) })
+        }
+      } else {
+        for (const prd of pagePrds) {
+          desired.push({ role, endpoint: prd.endpoint, page: prd.page, type: d.type ?? "build", assignee: role, content: interp(d.content, { module, endpoint: prd.endpoint, page: prd.page }) })
+        }
+      }
     }
   }
-  for (const prd of pagePrds) {
-    desired.push(
-      { role: "designer", endpoint: prd.endpoint, page: prd.page, type: "build", assignee: "designer", content: `设计 ${prd.endpoint}/${prd.page} 页面(提示词+原型)` },
-      { role: "developer", endpoint: prd.endpoint, page: prd.page, type: "build", assignee: "developer", content: `实现 ${prd.endpoint}/${prd.page} 页面` },
-      { role: "qa", endpoint: prd.endpoint, page: prd.page, type: "qa", assignee: "qa", content: `验收 ${prd.endpoint}/${prd.page} 页面` }
-    )
-  }
-
-  // 异构项目支持:不在 pipeline 里的角色不生成任务(纯后端项目无 designer/qa)
-  const activeRoles = new Set(ctx.config.pipeline)
-  const filtered = desired.filter(d => activeRoles.has(d.role))
-  desired.length = 0
-  desired.push(...filtered)
 
   // 幂等:等价任务已存在(非 cancelled)则跳过
   const exists = ctx.db.prepare(
