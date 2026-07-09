@@ -178,5 +178,16 @@ export const api = {
       throw new Error(data.error ?? `HTTP ${res.status}`)
     }
   },
-  registerFile: (path: string) => post<{ id: number; path: string }>(`/api/artifact/register`, { path, actor: ACTOR })
+  registerFile: (path: string) => post<{ id: number; path: string }>(`/api/artifact/register`, { path, actor: ACTOR }),
+  unregisterArtifact: async (id: number) => {
+    const res = await fetch(`/api/artifact/${id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ actor: ACTOR })
+    })
+    if (!res.ok) {
+      const data = (await res.json()) as { error?: string }
+      throw new Error(data.error ?? `HTTP ${res.status}`)
+    }
+  }
 }

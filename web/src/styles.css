@@ -144,3 +144,28 @@ body {
 .wb-md li {
   margin: 3px 0;
 }
+
+/* ─── 关系图(ReactFlow)主题适配:默认白底控件跟随 --wb-* 双主题 ─── */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--wb-line-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: var(--wb-panel);
+  border-bottom: 1px solid var(--wb-line);
+  color: rgba(var(--wb-fg), 0.85);
+}
+.react-flow__controls-button:hover {
+  background: var(--wb-raised);
+}
+.react-flow__controls-button svg {
+  fill: rgba(var(--wb-fg), 0.85);
+}
+.react-flow__edge-textbg {
+  fill: var(--wb-panel);
+}
+.react-flow__edge-text {
+  fill: rgba(var(--wb-fg), 0.8);
+}

@@ -88,6 +88,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
   const [q, setQ] = useState("")
   const [files, setFiles] = useState<string[]>([])
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null)
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const debounce = useRef<ReturnType<typeof setTimeout>>()
 
   const load = useCallback(() => {
@@ -161,6 +162,18 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
       .catch(e => message.error(String((e as Error).message ?? e)))
   }, [selectedEdge, load])
 
+  const unregister = useCallback(() => {
+    if (!selectedNode) return
+    api
+      .unregisterArtifact(selectedNode.id)
+      .then(() => {
+        message.success(t(`已取消登记:${selectedNode.path}`, `Unregistered: ${selectedNode.path}`))
+        setSelectedNode(null)
+        load()
+      })
+      .catch(e => message.error(String((e as Error).message ?? e)))
+  }, [selectedNode, load])
+
   const addFile = useCallback(
     (path: string) => {
       api
@@ -200,6 +213,11 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
         )}
         {selectedEdge && (selectedEdge.data as { source: string }).source === "derived" && (
           <Tag>{t("自动推导的关系不可解绑", "Derived edges cannot be unbound")}</Tag>
+        )}
+        {selectedNode && (
+          <Button danger size="small" onClick={unregister} title={t("仅未审批且未被任务/反馈引用的产物可取消登记", "Only unapproved, unreferenced artifacts can be unregistered")}>
+            {t(`取消登记:${selectedNode.path.split("/").pop()}`, `Unregister: ${selectedNode.path.split("/").pop()}`)}
+          </Button>
         )}
       </Space>
       {files.length > 0 && (
@@ -242,8 +260,18 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
             nodes={flow.nodes}
             edges={flow.edges}
             onConnect={onConnect}
-            onEdgeClick={(_, edge) => setSelectedEdge(edge)}
-            onPaneClick={() => setSelectedEdge(null)}
+            onEdgeClick={(_, edge) => {
+              setSelectedEdge(edge)
+              setSelectedNode(null)
+            }}
+            onNodeClick={(_, node) => {
+              setSelectedNode(raw.nodes.find(n => String(n.id) === node.id) ?? null)
+              setSelectedEdge(null)
+            }}
+            onPaneClick={() => {
+              setSelectedEdge(null)
+              setSelectedNode(null)
+            }}
             fitView
             minZoom={0.1}
             proOptions={{ hideAttribution: true }}

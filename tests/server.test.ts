@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, describe, it } from "node:test"
-import { openWorkbenchAt, scanArtifacts, submitArtifact, type Ctx } from "../core/index"
+import { approveArtifact, openWorkbenchAt, scanArtifacts, submitArtifact, type Ctx } from "../core/index"
 import { createServer } from "../server/app"
 
 function makeProject(): Ctx {
@@ -219,6 +219,54 @@ describe("关系图 API:手动边增删(derived 不可解绑,manual 可;环检�
       assert.ok(evAdd.c >= 1)
       assert.equal(evDel.c, 1)
       void flow
+    } finally {
+      await app.close()
+    }
+  })
+})
+
+describe("关系图 API:产物取消登记(未审批未引用可删;有信任痕迹拒绝)", () => {
+  it("手动登记的孤立产物可删(边级联);已审批 / 被任务引用的 403", async () => {
+    const ctx = makeProject()
+    ctxs.push(ctx)
+    mkdirSync(join(ctx.root, "notes"), { recursive: true })
+    writeFileSync(join(ctx.root, "notes/a.txt"), "a")
+    writeFileSync(join(ctx.root, "notes/b.txt"), "b")
+    writeFileSync(join(ctx.root, "notes/c.txt"), "c")
+    writeFileSync(join(ctx.root, "notes/d.txt"), "d")
+
+    const app = await createServer(ctx)
+    try {
+      const reg = async (p: string) =>
+        JSON.parse((await app.inject({ method: "POST", url: "/api/artifact/register", payload: { path: p, actor: "user" } })).body).id as number
+      const a = await reg("notes/a.txt")
+      const b = await reg("notes/b.txt")
+      await app.inject({ method: "POST", url: "/api/edge", payload: { fromId: a, toId: b, actor: "user" } })
+
+      // 孤立且未审批 → 可删,边级联消失
+      const del = await app.inject({ method: "DELETE", url: `/api/artifact/${b}`, payload: { actor: "user" } })
+      assert.equal(del.statusCode, 200)
+      const edges = ctx.db.prepare("SELECT COUNT(*) c FROM artifact_edges WHERE to_id = ?").get(b) as { c: number }
+      assert.equal(edges.c, 0)
+      const ev = ctx.db.prepare("SELECT COUNT(*) c FROM events WHERE event = 'unregistered'").get() as { c: number }
+      assert.equal(ev.c, 1)
+
+      // 已审批 → 403
+      const c = await reg("notes/c.txt")
+      approveArtifact(ctx, { id: c }, "user")
+      const delApproved = await app.inject({ method: "DELETE", url: `/api/artifact/${c}`, payload: { actor: "user" } })
+      assert.equal(delApproved.statusCode, 403)
+
+      // 被任务引用(task_outputs)→ 403
+      const d = await reg("notes/d.txt")
+      const taskId = ctx.db.prepare("INSERT INTO tasks (role, creator) VALUES ('developer','t')").run().lastInsertRowid
+      ctx.db.prepare("INSERT INTO task_outputs (task_id, artifact_id) VALUES (?, ?)").run(taskId, d)
+      const delRef = await app.inject({ method: "DELETE", url: `/api/artifact/${d}`, payload: { actor: "user" } })
+      assert.equal(delRef.statusCode, 403)
+
+      // 不存在 → 404
+      const del404 = await app.inject({ method: "DELETE", url: `/api/artifact/999`, payload: { actor: "user" } })
+      assert.equal(del404.statusCode, 404)
     } finally {
       await app.close()
     }

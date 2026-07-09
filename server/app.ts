@@ -265,6 +265,38 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
     return { id: r.lastInsertRowid as number, fromId, toId, source: "manual" }
   })
 
+  // 取消登记:仅限"无信任痕迹"的产物(未审批过、未被任务引用、无反馈)——手动误登记的撤销出口。
+  // 已进入信任机器的产物绝不硬删(审批/归因历史是资产);docs 树内的文件删除登记后下次 scan 会重新登记。
+  app.delete<{ Params: { id: string }; Body: { actor?: string } | null }>("/api/artifact/:id", async (req, reply) => {
+    const id = parseInt(req.params.id)
+    const row = ctx.db.prepare("SELECT * FROM artifacts WHERE id = ?").get(id) as ArtifactRow | undefined
+    if (!row) return reply.code(404).send({ error: "产物不存在" })
+    if (row.approved_hash !== null) return reply.code(403).send({ error: "该产物有审批历史,不可取消登记" })
+    const refs = ctx.db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM task_inputs WHERE artifact_id = ?) +
+                (SELECT COUNT(*) FROM task_outputs WHERE artifact_id = ?) +
+                (SELECT COUNT(*) FROM artifact_feedback WHERE artifact_id = ?) AS c`
+      )
+      .get(id, id, id) as { c: number }
+    if (refs.c > 0) return reply.code(403).send({ error: "该产物已被任务/反馈引用,不可取消登记" })
+    const tx = ctx.db.transaction(() => {
+      logEvent(ctx.db, {
+        entityType: "artifact",
+        entityId: id,
+        event: "unregistered",
+        actor: req.body?.actor || "user",
+        payload: { path: row.path, kind: row.kind },
+        module: row.module,
+        endpoint: row.endpoint,
+        page: row.page
+      })
+      ctx.db.prepare("DELETE FROM artifacts WHERE id = ?").run(id) // 边随 FK 级联删除
+    })
+    tx()
+    return { ok: true }
+  })
+
   // 解绑:仅 manual;derived 由 scan 对账维护,解了也会被推导回来,故直接禁止
   app.delete<{ Params: { id: string }; Body: { actor?: string } | null }>("/api/edge/:id", async (req, reply) => {
     const id = parseInt(req.params.id)
