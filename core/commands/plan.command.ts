@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { reviewStatus } from "../derive"
 import { logEvent } from "../events"
 import { normalizeModule } from "../kind"
@@ -55,8 +57,9 @@ export function planModule(ctx: Ctx, moduleRaw: string, creator = "product-manag
     summary.warnings.push(msg)
   }
 
-  // 期望任务集
-  const pagePrds = byKind("page-prd").filter(a => a.endpoint && a.page)
+  // 期望任务集(真相源 = 已登记且仍在磁盘的 page-prd:文件删除后行不删、只有 tombstone 事件,
+  // 若只看行存在,已删页面会永远派发/取消不掉 —— 以磁盘存在性收敛)
+  const pagePrds = byKind("page-prd").filter(a => a.endpoint && a.page && existsSync(join(ctx.root, a.path)))
   const endpoints = [...new Set(pagePrds.map(a => a.endpoint!))]
   const desired: DesiredTask[] = [
     { role: "architect", endpoint: "common", page: null, type: "build", assignee: "architect", content: `设计 ${module} 模块数据库` },

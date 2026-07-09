@@ -12,6 +12,7 @@ import {
   planModule,
   recordQaResult,
   scanArtifacts,
+  syncArtifacts,
   updateTask,
   type Ctx
 } from "../core/index"
@@ -60,10 +61,13 @@ describe("plan 派发:幂等 + 设计系统前置 + cancel 语义", () => {
     assert.equal(s.skipped, 10)
   })
 
-  it("cancel 语义:删除页面 PRD 后重派,该页 pending 任务被取消", () => {
+  it("cancel 语义:删除页面 PRD 后重派,该页 pending 任务被取消(走真实 tombstone 链路)", () => {
+    // 真实链路:文件删除 → sync 打 tombstone 事件(artifacts 行保留)→ plan 不再认它
+    // 此前的测试手工 DELETE FROM artifacts 抄了近道,掩盖了"行不删导致永远取消不掉"的缺陷
     rmSync(join(ctx.root, "docs/prd/pages/admin/land/edit.md"))
-    ctx.db.prepare("DELETE FROM artifacts WHERE path = 'docs/prd/pages/admin/land/edit.md'").run()
+    syncArtifacts(ctx)
     const s = planModule(ctx, "land")
+    assert.equal(s.created.length, 0) // 已删页面不再派新任务
     assert.equal(s.cancelled, 3) // designer + developer + qa
     const cancelled = listTasks(ctx, { module: "land", status: "cancelled" })
     assert.ok(cancelled.every(t => t.page === "land/edit"))
