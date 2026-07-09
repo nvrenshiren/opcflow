@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/nvrenshiren/opcflow/compare/v0.6.0...v0.7.0) (2026-07-09)
+
+
+### Features
+
+* 模板路径投影——agent 指示的产出路径由 kind 注册表(coords 文法+ext)推导 ([1374ba0](https://github.com/nvrenshiren/opcflow/commit/1374ba027d0020b87b0e2b69c0127aa9601b0cb4))
+
 # [0.6.0](https://github.com/nvrenshiren/opcflow/compare/v0.5.0...v0.6.0) (2026-07-09)
 
 
