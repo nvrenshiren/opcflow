@@ -120,6 +120,10 @@ export function updateTask(
 
   const { warnings } = validateComplete(ctx, task, status, { force })
 
+  // QA 闭环收口(rework 完成 → 自动派复验)必须与状态变更同事务:
+  // 否则进程在两步之间中断,rework 显示 completed 而复验永远不会派——闭环静默断裂且无自愈。
+  // better-sqlite3 嵌套 transaction 自动降级为 savepoint,spawnFollowupQa 内部的 tx 安全。
+  let followupQaId: number | null = null
   const tx = ctx.db.transaction(() => {
     ctx.db.prepare("UPDATE tasks SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id)
     logEvent(ctx.db, {
@@ -132,18 +136,17 @@ export function updateTask(
       endpoint: task.endpoint,
       page: task.page
     })
+    if (task.type === "rework" && status === "completed") {
+      followupQaId = spawnFollowupQa(ctx, task)
+    }
   })
   tx()
+  if (followupQaId !== null) warnings.push(`[复验] 已自动派新一轮 qa 任务 #${followupQaId}`)
 
-  // 快车道机器锁:hotfix 完成时检测契约触碰 → 自动升级标准道(补文档 review)
+  // 快车道机器锁:hotfix 完成时检测契约触碰 → 自动升级标准道(补文档 review)。
+  // 读 git 子进程,观测性质,留在事务外(丢失可由 sync/audit 兜底)
   if (task.type === "hotfix" && status === "completed") {
     warnings.push(...checkContractTouch(ctx, task, operator))
-  }
-
-  // QA 闭环收口:rework 完成 → 自动再派新一轮 qa 复验
-  if (task.type === "rework" && status === "completed") {
-    const qaId = spawnFollowupQa(ctx, task)
-    warnings.push(`[复验] 已自动派新一轮 qa 任务 #${qaId}`)
   }
 
   // issue 回写:关联 gh issue 的任务完成 → 自动关闭(fail-open)
