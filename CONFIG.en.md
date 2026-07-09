@@ -58,9 +58,11 @@ Fields fall into two groups: **frequently tuned** and **rarely touched (advanced
   - `produces: kind[]` — outputs (basis for gate derivation, output obligations, QA-loop reverse lookup; `roleProduces` is its legacy alias for this dimension only)
   - `requires: {desc, kinds, when?}[]` — exist-level input requirements; `when` is a **closed predicate** (only `endpoint`/`endpointNot`); approved-level requirements still derive from kind `parents`
   - `dispatch: {at, endpoint?, type?, ifMissingKind?, produces?, content}[]` — `plan` rules: `at: module|endpoint|page`; `content` interpolates `{module}/{endpoint}/{page}`; rule-level `produces` carries shape-split outputs (e.g. designer)
-  - `onQaFail: "rework"` — who picks up when QA fails this role's output
+  - `onQaFail: "rework"` — pickup declaration when QA fails this role's output (**no declaration on the owning role = fail is traced but no rework is dispatched**)
+  - `completeWithoutClaim: true` — allow completing without claiming (default: product-manager only); unclaimed completion still requires the operator to be the role itself or the task creator
   - Custom-role agent templates live at `docs/workbench/templates/agents/{zh|en}/<role>.md` (project dir wins over built-in)
 - **`intake`** `{bugRole?, defaultRole?}` (defaults developer / product-manager) —— which roles issue triage lands on.
+- **`server.authToken`** `string` (default unset) —— workbench write protection: once set, all write endpoints (approve/reject/feedback/edges…) require an `x-workbench-token` header; reads stay open. **"May write" is separated from "who" (actor identity)**; serve binds to the LAN by default, so set this for multi-user / untrusted networks. The workbench header has a matching token input.
 - **`kinds`** `Record<kind, {...}>` —— override/extend the kind registry (deep-merged with the core default table), tuning a kind's approval mode / tier / whether it drives stale, and its **coordinate grammar `coords`**.
   - **`coords`**: how this kind's file paths map to `(module, endpoint, page)`, relative to its `pathPatterns[0]` prefix, with placeholders `{module}/{endpoint}/{page}`:
     - A single placeholder `{X}` → binds to the **leaf filename** (ignoring intermediate dirs). Defaults: `flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`, `design-system` = `{endpoint}`.

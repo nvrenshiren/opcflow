@@ -58,10 +58,12 @@
   - `produces: kind[]` —— 产出(gate 上游推导、产出义务、QA 闭环反查的依据;`roleProduces` 是它的旧别名,仅此维度)
   - `requires: {desc, kinds, when?}[]` —— exist 级输入要求;`when` 是**封闭谓词**(仅 `endpoint`/`endpointNot`),approved 级仍由 kind 的 `parents` 自动派生
   - `dispatch: {at, endpoint?, type?, ifMissingKind?, produces?, content}[]` —— `plan` 派发规则:`at: module|endpoint|page`;`content` 支持 `{module}/{endpoint}/{page}` 插值;规则级 `produces` 承载按形态分裂的产出(如 designer)
-  - `onQaFail: "rework"` —— 产出被 QA 打回时的接锅声明
+  - `onQaFail: "rework"` —— 产出被 QA 打回时的接锅声明(**归属角色未声明则 fail 只留痕不派返工**)
+  - `completeWithoutClaim: true` —— 允许不领取直接完成(默认仅 product-manager);未领取完成仍要求 operator 是角色本人或任务创建者
   - 自定义角色的 agent 模板放 `docs/workbench/templates/agents/{zh|en}/<角色>.md`(项目目录优先于内置)
   - **示例**:`"roles": { "security-reviewer": { "produces": ["doc"], "requires": [{"desc":"API 契约","kinds":["api-doc"]}], "dispatch": [{"at":"page","content":"安审 {endpoint}/{page}"}] } }`
 - **`intake`** `{bugRole?, defaultRole?}`(默认 developer / product-manager)—— issue 分诊落到哪个角色。
+- **`server.authToken`** `string`(默认无)—— 工作台写保护:配置后所有写端点(审批/打回/反馈/建边等)要求 `x-workbench-token` 头,读端点保持开放。**「能不能写」与「是谁」(actor 身份)分离**;serve 默认对局域网开放,多人/不可信网络场景建议配置。工作台头部有对应口令输入。
 - **`kinds`** `Record<kind, {...}>` —— 覆盖 / 扩展 kind 注册表(与 core 默认表深合并),调 kind 的审批方式 / 层级 / 是否驱动 stale,以及**坐标文法 `coords`**。
   - **`coords`**:该 kind 的文件路径如何映射到坐标 `(module, endpoint, page)`,相对其 `pathPatterns[0]` 前缀,占位符 `{module}/{endpoint}/{page}`:
     - 单占位符 `{X}` → 绑定**叶子文件名**(忽略中间目录)。默认:`flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`、`design-system` = `{endpoint}`。

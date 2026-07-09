@@ -42,7 +42,7 @@ pnpm run build                # 发布构建(web + dist/cli.mjs)
 - **边是 id 基的**:`artifact_edges.source` 区分 derived(scan 对账维护,只增删于对账)/ manual(用户所有,scan 永不动);重命名靠 scan 的同 hash 唯一候选检测保 id 跟随。
 - **core/ 禁止 import server/web/业务代码**(check:isolation 强制)。
 - **人审不外包**:approve/reject 只在 CLI/工作台,MCP 永不暴露。
-- 项目可配性走注册表深合并:kind(`config.kinds`,含 coords 文法)、**角色(`config.roles`,core/roles.ts 的 `DEFAULT_ROLE_REGISTRY` 是角色语义唯一真相源——改角色行为改注册表,不加 role 字面量分支)**、`taskPreconditions`——加能力优先考虑"默认值=现行为的注册表字段",不加顶层开关。gates 仅存三处有据例外:产出义务跳过 developer/qa、PM 免领取、designer 原型👍。
+- 项目可配性走注册表深合并:kind(`config.kinds`,含 coords 文法)、**角色(`config.roles`,core/roles.ts 的 `DEFAULT_ROLE_REGISTRY` 是角色语义唯一真相源——改角色行为改注册表,不加 role 字面量分支)**、`taskPreconditions`——加能力优先考虑"默认值=现行为的注册表字段",不加顶层开关。gates 仅存两处有据例外:产出义务跳过 developer/qa、designer 原型👍(PM 免领取已注册表化为 `completeWithoutClaim`)。
 
 ## 常见坑
 

@@ -58,6 +58,15 @@ pnpm exec tsx cli.ts serve      # 从源码起 server → http://127.0.0.1:5620
 4. 开 PR,按模板填写改动说明与测试 checklist;CI 会自动跑同样的门禁。
 5. Review 通过后合并。
 
+## 版本与破坏性变更
+
+- 推 main 即由 semantic-release 发版(`feat`→minor、`fix`→patch)。**破坏性变更**必须在提交标题加 `!` 或 footer 写 `BREAKING CHANGE:`(升 major),且**必须附迁移指南**(commit body 或关联文档),并在 `tests/migration.test.ts` 补齐 schema 演进覆盖。
+- 走向 1.0 前,重大破坏性变更先在预发布 minor(如 0.10.x)摊开观察 ≥2 周,再合入大版本。
+
+## 范围外(non-goals)
+
+以下方向刻意不做,请勿就此提 PR:SaaS 多租户、替换 SQLite、TUI/桌面客户端、config 可视化编辑器、自动学习/微调(提炼保持确定性聚合)、插件市场、WORM 审计、Prometheus 导出、GitHub 之外的 git provider(按需再议)、拖拽编排 pipeline(拓扑已由角色注册表物化,手画违背配置即代码)。
+
 ## 报告问题 / 提需求
 
 用 [Issues](../../issues) 里的模板(Bug 报告 / 功能请求);开放式讨论走 [Discussions](../../discussions)。
