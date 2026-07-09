@@ -13,6 +13,7 @@ PLAN.md
 MULTI-PLATFORM-PLAN.md
 ROLE-PLATFORM-REGISTRY-PLAN.md
 RELATION-GRAPH-PLAN.md
+ROLE-REGISTRY-PHASE2-PLAN.md
 
 # 本地工作台数据(在仓库根跑 serve/scan 的测试库)
 .workbench/

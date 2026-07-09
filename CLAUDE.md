@@ -48,7 +48,7 @@ pnpm run build                # 发布构建(web + dist/cli.mjs)
 
 - Windows:文本 hash 已做 CRLF 归一(hashMode text-normalize),别绕过 `hashPath` 自己算。
 - WAL:`.workbench/workbench.db` 的近期状态在 `-wal` 里,export 前必须 checkpoint(exportEventLog 已处理)。
-- 改 kind 的 `coords`/`pathPatterns` 时注意 gen-agents 的模板路径 token 目前**不感知 coords**(已知缺口,Phase 2 待做)——改约定后 agent 指示可能与 scan 不一致。
+- agent 指示的产出路径由 `kindPathTemplate`(TPL_* token)从 kind 注册表推导——改了 `coords`/`docs` 后**重跑 `gen-agents`** 即同步;唯一例外 api-doc(叶子文法表达不了 `{端}/` 目录惯例,模板手写)。
 - 内部开发计划放仓库根 `*-PLAN.md`,已 gitignore(不随包分发);仓库根跑 serve 产生的 `.workbench/` 同样已忽略。
 
 ## 文档
