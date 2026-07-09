@@ -164,3 +164,63 @@ describe("关系图 API:graph / search / register", () => {
     }
   })
 })
+
+describe("关系图 API:手动边增删(derived 不可解绑,manual 可;环检测)", () => {
+  it("建 manual 边→事件留痕;重复 409;成环 400;删 derived 403;删 manual 放行", async () => {
+    const ctx = makeProject()
+    ctxs.push(ctx)
+    mkdirSync(join(ctx.root, "docs/prd/flows"), { recursive: true })
+    mkdirSync(join(ctx.root, "docs/prd/modules"), { recursive: true })
+    writeFileSync(join(ctx.root, "docs/prd/flows/land.md"), "# flow")
+    writeFileSync(join(ctx.root, "docs/prd/modules/land.md"), "# prd")
+    mkdirSync(join(ctx.root, "notes"), { recursive: true })
+    writeFileSync(join(ctx.root, "notes/memo.txt"), "memo")
+    scanArtifacts(ctx)
+    const id = (p: string) => (ctx.db.prepare("SELECT id FROM artifacts WHERE path = ?").get(p) as { id: number }).id
+    const flow = id("docs/prd/flows/land.md")
+    const prd = id("docs/prd/modules/land.md")
+
+    const app = await createServer(ctx)
+    try {
+      // 登记一个孤立文件,和 prd 建 manual 边:prd → memo
+      const reg = await app.inject({ method: "POST", url: "/api/artifact/register", payload: { path: "notes/memo.txt", actor: "user" } })
+      const memo = JSON.parse(reg.body).id as number
+
+      const ok = await app.inject({ method: "POST", url: "/api/edge", payload: { fromId: prd, toId: memo, actor: "user" } })
+      assert.equal(ok.statusCode, 200)
+      const edge = JSON.parse(ok.body)
+      assert.equal(edge.source, "manual")
+
+      const dup = await app.inject({ method: "POST", url: "/api/edge", payload: { fromId: prd, toId: memo, actor: "user" } })
+      assert.equal(dup.statusCode, 409)
+
+      // 自指 400
+      const self = await app.inject({ method: "POST", url: "/api/edge", payload: { fromId: prd, toId: prd, actor: "user" } })
+      assert.equal(self.statusCode, 400)
+
+      // 成环:已有 prd→memo,再试 memo→prd → 400
+      const cyc = await app.inject({ method: "POST", url: "/api/edge", payload: { fromId: memo, toId: prd, actor: "user" } })
+      assert.equal(cyc.statusCode, 400)
+
+      // derived 边不可删
+      const derived = ctx.db.prepare("SELECT id FROM artifact_edges WHERE source = 'derived' LIMIT 1").get() as { id: number }
+      assert.ok(derived, "应存在 flow→prd 的 derived 边")
+      const delDerived = await app.inject({ method: "DELETE", url: `/api/edge/${derived.id}`, payload: { actor: "user" } })
+      assert.equal(delDerived.statusCode, 403)
+
+      // manual 可删 + 留痕;不存在 404
+      const delManual = await app.inject({ method: "DELETE", url: `/api/edge/${edge.id}`, payload: { actor: "user" } })
+      assert.equal(delManual.statusCode, 200)
+      const delAgain = await app.inject({ method: "DELETE", url: `/api/edge/${edge.id}`, payload: { actor: "user" } })
+      assert.equal(delAgain.statusCode, 404)
+
+      const evAdd = ctx.db.prepare("SELECT COUNT(*) c FROM events WHERE event = 'edge_added'").get() as { c: number }
+      const evDel = ctx.db.prepare("SELECT COUNT(*) c FROM events WHERE event = 'edge_removed'").get() as { c: number }
+      assert.ok(evAdd.c >= 1)
+      assert.equal(evDel.c, 1)
+      void flow
+    } finally {
+      await app.close()
+    }
+  })
+})

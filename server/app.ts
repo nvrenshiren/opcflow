@@ -234,6 +234,56 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
     return registerAdHocArtifact(ctx, req.body.path, req.body.actor || "user")
   })
 
+  // 手动声明关系(source=manual):参与失效传播(spawnReviews 沿边表,不区分来源)
+  app.post<{ Body: { fromId: number; toId: number; actor?: string } }>("/api/edge", async (req, reply) => {
+    const { fromId, toId } = req.body
+    const actor = req.body.actor || "user"
+    if (!fromId || !toId || fromId === toId) {
+      return reply.code(400).send({ error: "无效的边:需要两个不同的产物" })
+    }
+    const has = (id: number) => (ctx.db.prepare("SELECT COUNT(*) c FROM artifacts WHERE id = ?").get(id) as { c: number }).c > 0
+    if (!has(fromId) || !has(toId)) return reply.code(404).send({ error: "产物不存在" })
+
+    // 环检测:从 toId 沿边下行可达 fromId → 拒绝
+    const seen = new Set<number>([toId])
+    const queue = [toId]
+    const next = ctx.db.prepare("SELECT to_id FROM artifact_edges WHERE from_id = ?")
+    while (queue.length) {
+      const cur = queue.pop()!
+      for (const row of next.all(cur) as { to_id: number }[]) {
+        if (row.to_id === fromId) return reply.code(400).send({ error: "会形成环,已拒绝" })
+        if (!seen.has(row.to_id)) {
+          seen.add(row.to_id)
+          queue.push(row.to_id)
+        }
+      }
+    }
+
+    const r = ctx.db.prepare("INSERT OR IGNORE INTO artifact_edges (from_id, to_id, source) VALUES (?, ?, 'manual')").run(fromId, toId)
+    if (r.changes === 0) return reply.code(409).send({ error: "该关系已存在" })
+    logEvent(ctx.db, { entityType: "artifact", entityId: toId, event: "edge_added", actor, payload: { fromId, toId, source: "manual" } })
+    return { id: r.lastInsertRowid as number, fromId, toId, source: "manual" }
+  })
+
+  // 解绑:仅 manual;derived 由 scan 对账维护,解了也会被推导回来,故直接禁止
+  app.delete<{ Params: { id: string }; Body: { actor?: string } | null }>("/api/edge/:id", async (req, reply) => {
+    const id = parseInt(req.params.id)
+    const edge = ctx.db.prepare("SELECT * FROM artifact_edges WHERE id = ?").get(id) as
+      | { id: number; from_id: number; to_id: number; source: string }
+      | undefined
+    if (!edge) return reply.code(404).send({ error: "边不存在" })
+    if (edge.source !== "manual") return reply.code(403).send({ error: "自动推导的关系不可解绑(由 scan 按坐标事实维护)" })
+    ctx.db.prepare("DELETE FROM artifact_edges WHERE id = ?").run(id)
+    logEvent(ctx.db, {
+      entityType: "artifact",
+      entityId: edge.to_id,
+      event: "edge_removed",
+      actor: req.body?.actor || "user",
+      payload: { fromId: edge.from_id, toId: edge.to_id }
+    })
+    return { ok: true }
+  })
+
   app.get("/api/review-queue", async () => {
     // 前端依赖 ever_approved(区分"复审中"与首次待审),与 nodeDetail 同口径补齐
     return listArtifacts(ctx, {})
