@@ -93,6 +93,45 @@ describe("sync:失效传播 → review 派发(去重) → trivial re-bless", () 
   })
 })
 
+describe("sync 去重粒度:按目标而非按源——先前 review 未关时,新增下游仍能收到通知", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-sync-gran-"))
+  writeFileSync(join(root, "workbench.config.json"), "{}")
+  const write = (rel: string, content: string) => {
+    mkdirSync(join(root, rel, ".."), { recursive: true })
+    writeFileSync(join(root, rel), content)
+  }
+  write("docs/prd/flows/land.md", "# flow")
+  write("docs/prd/modules/land.md", "# land PRD v1")
+  write("docs/prd/pages/admin/land/list.md", "# page prd")
+  const ctx = openWorkbenchAt(root)
+  scanArtifacts(ctx)
+  after(() => {
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("首轮 review 未关闭时第二次失效:已通知的目标去重、新出现的下游角色照常派", () => {
+    // 第一次失效:下游只有 page-prd → 派 PM review
+    approveArtifact(ctx, { path: "docs/prd/modules/land.md" }, "user")
+    writeFileSync(join(ctx.root, "docs/prd/modules/land.md"), "# land PRD v2")
+    syncArtifacts(ctx)
+    assert.equal(listTasks(ctx, { type: "review", role: "product-manager" }).length, 1)
+
+    // PM review 保持 open;期间新增 db-doc 下游(architect),再次批准→失效
+    approveArtifact(ctx, { path: "docs/prd/modules/land.md" }, "user")
+    mkdirSync(join(ctx.root, "docs/architecture/database"), { recursive: true })
+    writeFileSync(join(ctx.root, "docs/architecture/database/land.md"), "# land DB")
+    scanArtifacts(ctx) // 登记 db-doc + 推导 module-prd→db-doc 边
+    writeFileSync(join(ctx.root, "docs/prd/modules/land.md"), "# land PRD v3")
+    syncArtifacts(ctx)
+
+    // 修复前:hasOpenReview 按源整体短路 → architect 永远收不到
+    assert.equal(listTasks(ctx, { type: "review", role: "architect" }).length, 1)
+    // 已 open 的 PM review 不重复派
+    assert.equal(listTasks(ctx, { type: "review", role: "product-manager" }).length, 1)
+  })
+})
+
 describe("hotfix 契约触碰检测(工作区 diff,fail-open)", () => {
   const ctx = makeProject()
   after(() => {

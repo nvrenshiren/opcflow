@@ -24,24 +24,26 @@ export function ownerRole(ctx: Ctx, kind: ArtifactKind): Role | null {
   return null
 }
 
-/** 去重:该上游 artifact 是否已有 open 的 review 任务(经 task_inputs 关联) */
-function hasOpenReview(ctx: Ctx, artifactId: number): boolean {
-  const row = ctx.db
+/** 去重(按目标粒度):该上游已有 open review 的 (role|endpoint|module) 键集(经 task_inputs 关联) */
+function openReviewTargetKeys(ctx: Ctx, artifactId: number): Set<string> {
+  const rows = ctx.db
     .prepare(
-      `SELECT COUNT(*) AS c FROM tasks t
+      `SELECT t.role, t.endpoint, t.module FROM tasks t
        JOIN task_inputs ti ON ti.task_id = t.id
        WHERE t.type = 'review' AND t.status IN ('pending', 'in_progress') AND ti.artifact_id = ?`
     )
-    .get(artifactId) as { c: number }
-  return row.c > 0
+    .all(artifactId) as { role: string; endpoint: string | null; module: string | null }[]
+  return new Set(rows.map(r => `${r.role}|${r.endpoint ?? ""}|${r.module ?? ""}`))
 }
 
 /**
  * 上游产物变更/删除 → 沿 DAG 找直接下游 → 按下游归属角色派 review 任务。
  * 每个受影响 (role, endpoint) 一条;task_inputs 关联变更源(快照当前 hash,即"复审基线")。
+ * 去重按目标粒度而非按源整体:此前只要该源有任一 open review 就整体短路,
+ * 首轮 review 未关时新增的下游角色会永远收不到通知。
  */
 export function spawnReviews(ctx: Ctx, source: ArtifactRow, reason: string): number {
-  if (hasOpenReview(ctx, source.id)) return 0
+  const openKeys = openReviewTargetKeys(ctx, source.id)
 
   const registry = getKindRegistry(ctx.config)
   const downstream = ctx.db
@@ -54,6 +56,7 @@ export function spawnReviews(ctx: Ctx, source: ArtifactRow, reason: string): num
     const role = ownerRole(ctx, child.kind)
     if (!role) continue
     const key = `${role}|${child.endpoint ?? ""}|${child.module ?? source.module ?? ""}`
+    if (openKeys.has(key)) continue // 该目标已有 open review,不重复打扰
     targets.set(key, { role, endpoint: child.endpoint, module: child.module ?? source.module })
   }
 
