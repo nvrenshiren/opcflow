@@ -13,6 +13,7 @@ import {
   exportEventLog,
   feedbackArtifact,
   genAgents,
+  getAdapter,
   getTaskDetail,
   graphModule,
   initProject,
@@ -23,6 +24,7 @@ import {
   listTasks,
   migrateLegacy,
   moveArtifact,
+  PLATFORM_IDS,
   planModule,
   recordNote,
   recordQaResult,
@@ -36,7 +38,8 @@ import {
   submitArtifact,
   syncArtifacts,
   updateTask,
-  type Ctx
+  type Ctx,
+  type PlatformId
 } from "./core/index"
 
 const STATUS_TEXT: Record<string, string> = { pending: "⏳ 待领取", in_progress: "🔄 进行中", completed: "✅ 已完成", cancelled: "❌ 已取消" }
@@ -115,8 +118,6 @@ function printTaskDetail(ctx: Ctx, id: number) {
   console.log()
 }
 
-const ALL_PLATFORMS = ["claude", "codex", "opencode", "cursor"]
-
 /** 一线 provider 优先(下拉默认视图先展示这些,避免被聚合商 302ai/requesty/openrouter 等刷屏) */
 const PRIORITY_PROVIDERS = [
   "anthropic", "openai", "google", "xai", "deepseek",
@@ -179,7 +180,7 @@ async function promptInit(): Promise<InitAnswers> {
 
   const platform = await select<string>({
     message: zh ? "平台" : "Platform",
-    choices: ALL_PLATFORMS.map(p => ({ name: p, value: p })),
+    choices: PLATFORM_IDS.map(p => ({ name: p, value: p })),
     default: "claude"
   })
   const platforms = [platform]
@@ -214,8 +215,8 @@ async function promptInit(): Promise<InitAnswers> {
       choices: prov.models.map(m => ({ name: m.name, value: m.id })),
       pageSize: 12
     })
-    // OpenCode 的 model 字段要 provider/model 格式;其余平台存纯 model id
-    if (modelId) modelObj[p] = p === "opencode" ? `${provId}/${modelId}` : modelId
+    // 模型 ID 格式由 adapter 决定(如 OpenCode 要 provider/model 形式)
+    if (modelId) modelObj[p] = getAdapter(p as PlatformId).formatModel(provId, modelId)
   }
 
   return { platforms, endpoints, model: Object.keys(modelObj).length ? modelObj : undefined, language }
