@@ -196,3 +196,37 @@ describe("B4 端到端:自定义角色 = config + 项目模板,零引擎代码",
     ctx.config.pipeline = ctx.config.pipeline.filter(r => r !== "ghost-role")
   })
 })
+
+describe("onQaFail 接线:rework 是否派发由 code 归属角色的注册表声明决定", () => {
+  const mk = (rolesJson: object) => {
+    const root = mkdtempSync(join(tmpdir(), "wb-onqafail-"))
+    writeFileSync(join(root, "workbench.config.json"), JSON.stringify(rolesJson))
+    const ctx = openWorkbenchAt(root)
+    // 直插一条已领取的 qa 任务(绕开 claim 前置,聚焦 fail 分支)
+    const id = ctx.db
+      .prepare("INSERT INTO tasks (module, role, endpoint, type, status, assignee, creator) VALUES ('m','qa','admin','qa','in_progress','qa','pm')")
+      .run().lastInsertRowid as number
+    return { root, ctx, id }
+  }
+
+  it("默认注册表:developer.onQaFail=rework → fail 照常派返工(行为锚点)", async () => {
+    const { recordQaResult } = await import("../core/index")
+    const { root, ctx, id } = mk({})
+    const r = recordQaResult(ctx, { id, result: "fail", reason: "分页坏了", operator: "qa" })
+    assert.ok(r.reworkTaskId)
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("code 归属角色未声明 onQaFail → fail 只留痕,不派返工", async () => {
+    const { recordQaResult } = await import("../core/index")
+    // fixer 接管 code 且未声明 onQaFail;developer 让出 code
+    const { root, ctx, id } = mk({ roleProduces: { developer: [] }, roles: { fixer: { produces: ["code"] } } })
+    const r = recordQaResult(ctx, { id, result: "fail", reason: "分页坏了", operator: "qa" })
+    assert.equal(r.reworkTaskId, null) // 修复前:硬派 rework,无视注册表声明
+    const c = (ctx.db.prepare("SELECT COUNT(*) c FROM tasks WHERE type = 'rework'").get() as { c: number }).c
+    assert.equal(c, 0)
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+})

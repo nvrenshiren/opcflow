@@ -1,5 +1,5 @@
 import { logEvent } from "../events"
-import { ownerRoleOf } from "../roles"
+import { getRoleRegistry, ownerRoleOf } from "../roles"
 import type { ArtifactRow, Ctx } from "../types"
 import { feedbackArtifact } from "./artifact.commands"
 import { getTaskRow, updateTask } from "./task.commands"
@@ -62,8 +62,12 @@ export function recordQaResult(ctx: Ctx, p: QaResultParams): QaResultOutcome {
     return { reworkTaskId: null }
   }
 
-  // fail → rework 任务:接锅方 = 产出 code 的角色(注册表反查;缺省 developer)
+  // fail → 是否派返工由 code 归属角色的注册表声明决定(onQaFail: "rework";默认注册表 developer 声明了它,行为不变)。
+  // 归属角色未声明 → 只留 qa_failed 痕,不自动派——自定义管道可自行决定返工机制
   const reworkRole = ownerRoleOf(ctx.config, "code") ?? "developer"
+  if (getRoleRegistry(ctx.config)[reworkRole]?.onQaFail !== "rework") {
+    return { reworkTaskId: null }
+  }
   const tx2 = ctx.db.transaction(() => {
     const result = ctx.db
       .prepare(
