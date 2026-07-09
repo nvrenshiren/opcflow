@@ -52,14 +52,16 @@ function coordFailed(ctx: Ctx, module: string | null, endpoint: string | null, p
   return row !== undefined && row.event !== "qa_passed"
 }
 
-/** pending 任务的 exist 级 gate 当前不可满足 → blocked(懒计算,legacy 不算) */
+/** pending 任务的 gate 当前不可满足 → blocked(懒计算,legacy 不算) */
 function taskBlocked(ctx: Ctx, task: TaskRow): boolean {
   if (task.status !== "pending" || task.type === "legacy") return false
   try {
     validateClaim(ctx, task)
     return false
   } catch (err) {
-    return err instanceof Error && err.message.includes("不存在")
+    // 所有 gate 硬阻断统一带 "[前置条件]" 前缀:exist 级缺失 / enforce 信任要求 / qa 等 developer 的任务级前置。
+    // 此前只认"不存在"字样,后两类真实不可领取的任务在树上显示为健康,低估 enforce 模式的阻塞面。
+    return err instanceof Error && err.message.includes("[前置条件]")
   }
 }
 
@@ -158,6 +160,8 @@ export function buildTree(ctx: Ctx, opts: { includeMeta?: boolean } = {}): TreeN
         eTasks.filter(t => !t.page)
       )
       for (const child of pageNodes) health = worse(health, child.health)
+      // 端级(page=null)质检失败事件没有子页面可冒泡,端节点需自查——否则 module 变红而端看不出在哪
+      if (coordFailed(ctx, module, endpoint, null)) health = "failed"
       return {
         key: `${module}/${endpoint}`,
         title: endpoint,
