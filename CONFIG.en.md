@@ -54,6 +54,13 @@ Fields fall into two groups: **frequently tuned** and **rarely touched (advanced
 - **`legacyDb`** `string` (default `tasks/task.db`) —— the legacy DB path `migrate` reads by default.
 - **`cli`** `string` (default `npx -y @dawipong/opcflow`) —— the command prefix injected into agent definitions, MCP, hooks, and gate errors; this is what makes machine-switch / team collaboration reinstall-free.
 - **`roleProduces`** `Record<role, kind[]>` —— the kinds each role produces; the gate's upstream selector is derived from this.
+- **`roles`** `Record<role, RoleSpec>` —— override/extend the **role registry** (deep-merged with the 5 built-ins): custom roles are defined here and join the pipeline via `pipeline`, zero engine code. Dimensions:
+  - `produces: kind[]` — outputs (basis for gate derivation, output obligations, QA-loop reverse lookup; `roleProduces` is its legacy alias for this dimension only)
+  - `requires: {desc, kinds, when?}[]` — exist-level input requirements; `when` is a **closed predicate** (only `endpoint`/`endpointNot`); approved-level requirements still derive from kind `parents`
+  - `dispatch: {at, endpoint?, type?, ifMissingKind?, produces?, content}[]` — `plan` rules: `at: module|endpoint|page`; `content` interpolates `{module}/{endpoint}/{page}`; rule-level `produces` carries shape-split outputs (e.g. designer)
+  - `onQaFail: "rework"` — who picks up when QA fails this role's output
+  - Custom-role agent templates live at `docs/workbench/templates/agents/{zh|en}/<role>.md` (project dir wins over built-in)
+- **`intake`** `{bugRole?, defaultRole?}` (defaults developer / product-manager) —— which roles issue triage lands on.
 - **`kinds`** `Record<kind, {...}>` —— override/extend the kind registry (deep-merged with the core default table), tuning a kind's approval mode / tier / whether it drives stale, and its **coordinate grammar `coords`**.
   - **`coords`**: how this kind's file paths map to `(module, endpoint, page)`, relative to its `pathPatterns[0]` prefix, with placeholders `{module}/{endpoint}/{page}`:
     - A single placeholder `{X}` → binds to the **leaf filename** (ignoring intermediate dirs). Defaults: `flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`, `design-system` = `{endpoint}`.

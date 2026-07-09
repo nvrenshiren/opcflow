@@ -54,6 +54,14 @@
 - **`legacyDb`** `string`(默认 `tasks/task.db`)—— `migrate` 默认读取的旧库路径。
 - **`cli`** `string`(默认 `npx -y @dawipong/opcflow`)—— 注入到 agent 定义、MCP、hooks、gate 报错里的命令前缀;换机器 / 团队协作免重装即靠它。
 - **`roleProduces`** `Record<角色, kind[]>` —— 各角色产出的 kind,gate 的上游选择器据此派生。
+- **`roles`** `Record<角色, RoleSpec>` —— 覆盖 / 扩展**角色注册表**(与内置 5 角色深合并):自定义角色由此定义,加进 `pipeline` 即入流水线,零引擎代码。维度:
+  - `produces: kind[]` —— 产出(gate 上游推导、产出义务、QA 闭环反查的依据;`roleProduces` 是它的旧别名,仅此维度)
+  - `requires: {desc, kinds, when?}[]` —— exist 级输入要求;`when` 是**封闭谓词**(仅 `endpoint`/`endpointNot`),approved 级仍由 kind 的 `parents` 自动派生
+  - `dispatch: {at, endpoint?, type?, ifMissingKind?, produces?, content}[]` —— `plan` 派发规则:`at: module|endpoint|page`;`content` 支持 `{module}/{endpoint}/{page}` 插值;规则级 `produces` 承载按形态分裂的产出(如 designer)
+  - `onQaFail: "rework"` —— 产出被 QA 打回时的接锅声明
+  - 自定义角色的 agent 模板放 `docs/workbench/templates/agents/{zh|en}/<角色>.md`(项目目录优先于内置)
+  - **示例**:`"roles": { "security-reviewer": { "produces": ["doc"], "requires": [{"desc":"API 契约","kinds":["api-doc"]}], "dispatch": [{"at":"page","content":"安审 {endpoint}/{page}"}] } }`
+- **`intake`** `{bugRole?, defaultRole?}`(默认 developer / product-manager)—— issue 分诊落到哪个角色。
 - **`kinds`** `Record<kind, {...}>` —— 覆盖 / 扩展 kind 注册表(与 core 默认表深合并),调 kind 的审批方式 / 层级 / 是否驱动 stale,以及**坐标文法 `coords`**。
   - **`coords`**:该 kind 的文件路径如何映射到坐标 `(module, endpoint, page)`,相对其 `pathPatterns[0]` 前缀,占位符 `{module}/{endpoint}/{page}`:
     - 单占位符 `{X}` → 绑定**叶子文件名**(忽略中间目录)。默认:`flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`、`design-system` = `{endpoint}`。
