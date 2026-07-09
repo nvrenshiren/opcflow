@@ -59,6 +59,7 @@
   },
   "devDependencies": {
     "@ant-design/icons": "^6",
+    "@dagrejs/dagre": "^3.0.0",
     "@monaco-editor/react": "^4.7.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
@@ -67,6 +68,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^6",
+    "@xyflow/react": "^12.11.2",
     "antd": "^6",
     "esbuild": "^0.28.1",
     "mermaid": "^11",

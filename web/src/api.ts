@@ -111,6 +111,24 @@ export interface SkillCandidatesReport {
   guidance: string[]
 }
 
+export interface GraphNode {
+  id: number
+  kind: string
+  path: string
+  module: string | null
+  endpoint: string | null
+  page: string | null
+  review_status: "draft" | "pending" | "approved" | "invalidated"
+  missing: boolean
+}
+
+export interface GraphEdge {
+  id: number
+  from_id: number
+  to_id: number
+  source: "derived" | "manual"
+}
+
 export const ACTOR = "user"
 
 export const api = {
@@ -141,5 +159,24 @@ export const api = {
     const i = path.lastIndexOf(seg)
     const rel = i >= 0 ? path.slice(i + seg.length) : path.split("/").pop() || path
     return encodeURI(`/proto/${rel}`)
-  }
+  },
+  // ─── 关系图 ───
+  graph: () => get<{ nodes: GraphNode[]; edges: GraphEdge[] }>(`/api/graph`),
+  searchFiles: (q: string) =>
+    get<{ artifacts: { id: number; kind: string; path: string; review_status: string }[]; files: string[] }>(
+      `/api/search?q=${encodeURIComponent(q)}`
+    ),
+  addEdge: (fromId: number, toId: number) => post<GraphEdge>(`/api/edge`, { fromId, toId, actor: ACTOR }),
+  removeEdge: async (id: number) => {
+    const res = await fetch(`/api/edge/${id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ actor: ACTOR })
+    })
+    if (!res.ok) {
+      const data = (await res.json()) as { error?: string }
+      throw new Error(data.error ?? `HTTP ${res.status}`)
+    }
+  },
+  registerFile: (path: string) => post<{ id: number; path: string }>(`/api/artifact/register`, { path, actor: ACTOR })
 }

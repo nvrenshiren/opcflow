@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, type TreeNode, type WbEvent } from "./api"
 import { NodePanel } from "./NodePanel"
 import { ReviewQueue } from "./ReviewQueue"
+import { RelationGraph } from "./RelationGraph"
 import { SkillCandidates } from "./SkillCandidates"
 import { useUiPrefs } from "./prefs"
 import { ACCENT, MONO, SURFACE } from "./ui"
@@ -76,6 +77,7 @@ export default function App() {
   const [queueOpen, setQueueOpen] = useState(false)
   const [skillCount, setSkillCount] = useState(0)
   const [skillOpen, setSkillOpen] = useState(false)
+  const [graphOpen, setGraphOpen] = useState(false)
   const refreshTimer = useRef<number | null>(null)
   const prevSkill = useRef(-1) // -1 = 首次加载,不弹提醒;之后仅在计数增长时提醒
 
@@ -192,6 +194,9 @@ export default function App() {
           <Button size="small" onClick={runSync}>
             {t("Sync 对账", "Sync")}
           </Button>
+          <Button size="small" onClick={() => setGraphOpen(true)}>
+            {t("关系图", "Graph")}
+          </Button>
           <Badge count={skillCount} size="small" offset={[-2, 2]} color="#722ed1">
             <Button size="small" onClick={() => setSkillOpen(true)}>
               {t("经验提炼", "Distill")}
@@ -227,6 +232,7 @@ export default function App() {
       </Layout>
       <ReviewQueue open={queueOpen} onClose={() => setQueueOpen(false)} onActed={() => loadTree(includeMeta)} />
       <SkillCandidates open={skillOpen} onClose={() => setSkillOpen(false)} />
+      <RelationGraph open={graphOpen} onClose={() => setGraphOpen(false)} />
     </Layout>
   )
 }
