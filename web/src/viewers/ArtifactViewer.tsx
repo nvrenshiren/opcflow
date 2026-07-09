@@ -237,15 +237,19 @@ function Actions({ artifact, onDone }: { artifact: Artifact; onDone: () => void 
   )
 }
 
-export function ArtifactViewer({ artifact }: { artifact: Artifact }) {
+export function ArtifactViewer({ artifact, refreshSignal = 0 }: { artifact: Artifact; refreshSignal?: number }) {
   const { theme: themeMode } = useUiPrefs()
   const [detail, setDetail] = useState<ArtifactDetail | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    setDetail(null)
+    // refreshSignal = 最新事件 id(SSE 驱动):viewer 打开期间产物被别端修改/送审,自动重拉而不必关掉重开
     api.artifact(artifact.id).then(setDetail)
-  }, [artifact.id, reloadKey])
+  }, [artifact.id, reloadKey, refreshSignal])
+
+  useEffect(() => {
+    setDetail(null) // 仅切换产物时清空重骨架;SSE 刷新保持旧内容平滑替换
+  }, [artifact.id])
 
   if (!detail) return <Skeleton active paragraph={{ rows: 8 }} style={{ padding: "12px 4px" }} />
   if (detail.missing) return <Alert type="warning" message={`文件已不在磁盘上: ${artifact.path}`} />

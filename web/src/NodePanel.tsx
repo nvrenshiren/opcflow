@@ -261,7 +261,7 @@ export function NodePanel({
         destroyOnHidden
         styles={{ body: { display: "flex", flexDirection: "column" } }}
       >
-        {viewing && <ArtifactViewer artifact={viewing} />}
+        {viewing && <ArtifactViewer artifact={viewing} refreshSignal={latestEventId} />}
       </Drawer>
     </div>
   )

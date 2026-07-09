@@ -226,7 +226,7 @@ export default function App() {
       <Layout style={{ flex: 1, minHeight: 0 }}>
         <Layout.Sider
           width={312}
-          theme="light"
+          theme={themeMode}
           style={{ borderRight: `1px solid ${SURFACE.line}`, overflow: "auto", background: SURFACE.panel }}
         >
           <div style={{ padding: "10px 12px 4px", fontSize: 11, letterSpacing: 1, color: "rgba(var(--wb-fg),0.35)" }}>
