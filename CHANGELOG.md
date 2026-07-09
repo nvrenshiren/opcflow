@@ -1,3 +1,11 @@
+# [0.9.0](https://github.com/nvrenshiren/opcflow/compare/v0.8.0...v0.9.0) (2026-07-09)
+
+
+### Features
+
+* 工作台可设置操作人身份(localStorage 持久)——多人共用时审批/反馈/建边按 actor 区分 ([8892814](https://github.com/nvrenshiren/opcflow/commit/8892814e4545c1b41fc60cc95c28f0543a5d5099))
+* 平台规则/记忆落库跟踪——rule/memory 元 kind(approval:none),按平台目录约定动态展开 ([0742b09](https://github.com/nvrenshiren/opcflow/commit/0742b090c0ee5bf72b32e59c3465d3acd9c1e6b1))
+
 # [0.8.0](https://github.com/nvrenshiren/opcflow/compare/v0.7.0...v0.8.0) (2026-07-09)
 
 
