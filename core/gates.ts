@@ -245,18 +245,17 @@ export function validateComplete(
     }
   }
 
-  // 协议 lint:developer 按端 / architect 契约文档,违例即阻断(legacy 已在上方早退)
-  if (task.role === "developer" || task.role === "architect") {
-    const violations = runProtocolLints(ctx, { role: task.role, endpoint: task.endpoint })
-    if (violations.length > 0) {
-      const detail = violations
-        .slice(0, 10)
-        .map(v => `  ${v.file}:${v.line} [${v.lint}] ${v.message}\n    ${v.text}`)
-        .join("\n")
-      throw new Error(
-        `[协议 lint 失败] ${violations.length} 处违例,修复后再完成:\n${detail}${violations.length > 10 ? `\n  ...等 ${violations.length} 处` : ""}`
-      )
-    }
+  // 协议 lint:角色/端过滤交给 runProtocolLints 自己(rule.role 缺省即 developer),
+  // 不再在外层限定角色白名单——此前 role:qa/designer 等配置项会被这里静默吞掉,永不生效
+  const violations = runProtocolLints(ctx, { role: task.role, endpoint: task.endpoint })
+  if (violations.length > 0) {
+    const detail = violations
+      .slice(0, 10)
+      .map(v => `  ${v.file}:${v.line} [${v.lint}] ${v.message}\n    ${v.text}`)
+      .join("\n")
+    throw new Error(
+      `[协议 lint 失败] ${violations.length} 处违例,修复后再完成:\n${detail}${violations.length > 10 ? `\n  ...等 ${violations.length} 处` : ""}`
+    )
   }
 
   // developer:机器检查(config 开启时)

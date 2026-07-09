@@ -100,3 +100,39 @@ describe("M5 协议 lint 卡点", () => {
     assert.equal(runProtocolLints(ctx, { role: "developer", endpoint: "admin" }).length, 0)
   })
 })
+
+describe("M5 协议 lint 门禁:去外层角色白名单,role:qa 规则不再被静默吞掉", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-m5-role-"))
+  writeFileSync(
+    join(root, "workbench.config.json"),
+    JSON.stringify({
+      protocolLints: [
+        { name: "qa-no-todo", grep: "TODO", paths: ["docs/acceptance"], role: "qa", message: "验收文档不留 TODO" }
+      ]
+    })
+  )
+  const write = (rel: string, content: string) => {
+    mkdirSync(join(root, rel, ".."), { recursive: true })
+    writeFileSync(join(root, rel), content)
+  }
+  write("docs/prd/modules/land.md", "# PRD")
+  write("docs/acceptance/land.md", "验收要点:TODO 补充用例")
+  const ctx = openWorkbenchAt(root)
+  registerOutput(ctx, { module: "land", role: "product-manager", endpoint: "common", filePath: "docs/prd/modules/land.md" })
+  registerOutput(ctx, { module: "land", role: "qa", endpoint: "common", filePath: "docs/acceptance/land.md" })
+
+  it("role:qa 的 lint 违例阻断 qa 任务 complete(此前被外层白名单静默忽略)", () => {
+    const id = createTask(ctx, { module: "land", role: "qa", endpoint: "common", type: "qa", creator: "pm" })
+    // qa 的 claim 前置要求 developer 已完成:先补一个已完成的 developer 任务
+    ctx.db
+      .prepare("INSERT INTO tasks (module, role, endpoint, status, assignee, creator) VALUES ('land','developer','common','completed','developer','pm')")
+      .run()
+    claimTask(ctx, { id, assignee: "qa" })
+    assert.throws(
+      () => updateTask(ctx, { id, status: "completed", operator: "qa", force: true }),
+      /协议 lint 失败.*qa-no-todo/s
+    )
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+})
