@@ -1,3 +1,20 @@
+# [0.5.0](https://github.com/nvrenshiren/opcflow/compare/v0.4.0...v0.5.0) (2026-07-09)
+
+
+### Bug Fixes
+
+* 关系图控件跟随暗色主题;手动登记的产物可取消登记(无信任痕迹才放行) ([e603831](https://github.com/nvrenshiren/opcflow/commit/e603831fec004447673a85dd3ef581ea4ab0f2c2))
+
+
+### Features
+
+* artifact_edges 加 source 列区分推导边与手动边(迁移 4) ([cfe1980](https://github.com/nvrenshiren/opcflow/commit/cfe198062c6a4f71ea953baf6810bf39a3b8cb54))
+* deriveEdges 对账化——derived 边随坐标事实收敛,manual 边永不动 ([f329524](https://github.com/nvrenshiren/opcflow/commit/f3295243ac4f09a68fd95ca4041caa6b4150c402))
+* scan 重命名/移动检测——同 hash 唯一候选保 id 跟随,审批与关系存活 ([15f101c](https://github.com/nvrenshiren/opcflow/commit/15f101cf5dc652919c205706b22fe96384ce0daa))
+* 关系图只读 API——graph/search/按需登记 ([4c9b157](https://github.com/nvrenshiren/opcflow/commit/4c9b15746a1f91bce6daeb567b963a5eda5c3165))
+* 工作台产出物关系图——画布/搜索/手动连线/解绑/文件按需登记 ([7034d13](https://github.com/nvrenshiren/opcflow/commit/7034d13f15047e2fbc27df5457158a556ac48bd5))
+* 手动关系边 API——建边(环检测)/解绑(仅 manual),事件留痕 ([ba0d9ae](https://github.com/nvrenshiren/opcflow/commit/ba0d9aec98cd786fab7427a600cafa370dcf9f48))
+
 # [0.4.0](https://github.com/nvrenshiren/opcflow/compare/v0.3.0...v0.4.0) (2026-07-09)
 
 
