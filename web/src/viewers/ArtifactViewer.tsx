@@ -121,7 +121,7 @@ function PrototypeView({ artifact }: { artifact: Artifact }) {
       />
       <Flex justify="center" style={{ background: SURFACE.raised, padding: 16, borderRadius: 10 }}>
         <iframe
-          src={api.rawUrl(artifact.id)}
+          src={api.protoUrl(artifact.path)}
           sandbox="allow-scripts"
           style={{ width, height: "70vh", border: `1px solid ${SURFACE.lineStrong}`, borderRadius: 6, background: "#fff" }}
           title={artifact.path}

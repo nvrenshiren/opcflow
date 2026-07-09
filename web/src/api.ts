@@ -135,5 +135,11 @@ export const api = {
   files: (id: number) => get<{ files: { rel: string; size: number }[] }>(`/api/artifact/${id}/files`),
   file: (id: number, rel: string) => get<{ content: string }>(`/api/artifact/${id}/file?rel=${encodeURIComponent(rel)}`),
   events: (limit = 60) => get<WbEvent[]>(`/api/events?limit=${limit}`),
-  rawUrl: (id: number) => `/api/artifact/${id}/raw`
+  /** 原型静态地址:iframe 直接打开原型文件的真实相对路径(相对 <docs.design>/prototypes),相对资源可正确解析 */
+  protoUrl: (path: string) => {
+    const seg = "/prototypes/"
+    const i = path.lastIndexOf(seg)
+    const rel = i >= 0 ? path.slice(i + seg.length) : path.split("/").pop() || path
+    return encodeURI(`/proto/${rel}`)
+  }
 }

@@ -1,7 +1,7 @@
 import fastifyCors from "@fastify/cors"
 import fastifyStatic from "@fastify/static"
 import Fastify, { type FastifyInstance } from "fastify"
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { isAbsolute, join, normalize, relative } from "node:path"
 import {
   approveArtifact,
@@ -50,6 +50,13 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
     await app.register(fastifyStatic, { root: webDist })
   }
 
+  // 原型静态服务:iframe 直接指向原型文件的真实相对路径,HTML 里的相对资源(css/js/img)
+  // 才能正确解析——不再经 /raw 把内容读成文本吐回(那样相对路径会以 API 路径为基准而 404)。
+  // 作用域仅限 <docs.design>/prototypes 子树,不暴露整个项目(默认 0.0.0.0 下尤为重要)。
+  const protoRoot = join(ctx.root, ctx.config.docs.design, "prototypes")
+  mkdirSync(protoRoot, { recursive: true })
+  await app.register(fastifyStatic, { root: protoRoot, prefix: "/proto/", decorateReply: false })
+
   app.get("/api/meta", async () => ({
     root: ctx.root,
     language: ctx.config.language,
@@ -96,16 +103,6 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
       content = readFileSync(abs, "utf-8")
     }
     return { artifact, content, isDirectory, missing, feedback, events }
-  })
-
-  app.get<{ Params: { id: string } }>("/api/artifact/:id/raw", async (req, reply) => {
-    const artifact = getArtifact(ctx, parseInt(req.params.id))
-    const abs = guardedAbsPath(ctx, artifact)
-    if (!existsSync(abs) || statSync(abs).isDirectory()) {
-      return reply.code(404).send("not found")
-    }
-    reply.header("content-type", artifact.path.endsWith(".html") ? "text/html; charset=utf-8" : "text/plain; charset=utf-8")
-    return reply.send(readFileSync(abs))
   })
 
   app.get<{ Params: { id: string } }>("/api/artifact/:id/files", async req => {

@@ -78,4 +78,32 @@ describe("server 路径守卫与待审队列", () => {
       await app.close()
     }
   })
+
+  it("/proto 静态服务:原型 HTML 与同目录相对资源都能直接打开", async () => {
+    const ctx = makeProject()
+    ctxs.push(ctx)
+    const dir = join(ctx.root, "docs/design/prototypes/admin/user")
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, "list.html"), '<link rel="stylesheet" href="./app.css"><div>proto</div>')
+    writeFileSync(join(dir, "app.css"), "body{color:red}")
+
+    const app = await createServer(ctx)
+    try {
+      // iframe src = /proto/<相对原型根的路径>
+      const html = await app.inject({ method: "GET", url: "/proto/admin/user/list.html" })
+      assert.equal(html.statusCode, 200)
+      assert.match(String(html.headers["content-type"]), /text\/html/)
+      assert.ok(html.body.includes("./app.css"))
+
+      // 相对资源:HTML 里的 ./app.css 会解析为 /proto/admin/user/app.css —— 正是过去经 /raw 会 404 的场景
+      const css = await app.inject({ method: "GET", url: "/proto/admin/user/app.css" })
+      assert.equal(css.statusCode, 200)
+      assert.match(String(css.headers["content-type"]), /text\/css/)
+
+      const missing = await app.inject({ method: "GET", url: "/proto/admin/user/nope.html" })
+      assert.equal(missing.statusCode, 404)
+    } finally {
+      await app.close()
+    }
+  })
 })
