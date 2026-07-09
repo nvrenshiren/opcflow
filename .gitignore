@@ -11,3 +11,8 @@ project/
 # 内部开发计划(本地保留,不随工具分发)
 PLAN.md
 MULTI-PLATFORM-PLAN.md
+ROLE-PLATFORM-REGISTRY-PLAN.md
+RELATION-GRAPH-PLAN.md
+
+# 本地工作台数据(在仓库根跑 serve/scan 的测试库)
+.workbench/
