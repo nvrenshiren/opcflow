@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, describe, it } from "node:test"
@@ -153,5 +153,46 @@ describe("QA 闭环角色注册表化:rework 接锅方与复验角色由 produce
     assert.equal(ownerRoleOf(base, "acceptance"), "qa")
     assert.equal(ownerRoleOf({ ...base, roles: { verifier: { produces: ["acceptance"] } } } as never, "acceptance"), "qa") // 默认 qa 先命中(遍历序)
     void cfg
+  })
+})
+
+describe("B4 端到端:自定义角色 = config + 项目模板,零引擎代码", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-roles-e2e-"))
+  writeFileSync(
+    join(root, "workbench.config.json"),
+    JSON.stringify({
+      pipeline: ["product-manager", "architect", "designer", "developer", "security-reviewer", "qa"],
+      roles: { "security-reviewer": { produces: ["doc"], dispatch: [{ at: "page", content: "安审 {endpoint}/{page}" }] } }
+    })
+  )
+  // 项目级模板目录:自定义角色的"函数体"
+  mkdirSync(join(root, "docs/workbench/templates/agents/zh"), { recursive: true })
+  writeFileSync(
+    join(root, "docs/workbench/templates/agents/zh/security-reviewer.md"),
+    "---\nname: security-reviewer\ndescription: 安全审查页面实现\ntools: Read, Grep\n---\n\n# 安全审查员\n\n检查注入与越权。\n"
+  )
+  const ctx: Ctx = openWorkbenchAt(root)
+  after(() => {
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("genAgents:内置角色走内置模板,自定义角色走项目模板,共 6 份", async () => {
+    const { genAgents } = await import("../core/index")
+    const { written } = genAgents(ctx)
+    assert.equal(written.length, 6)
+    const sec = readFileSync(join(root, ".claude/agents/security-reviewer.md"), "utf-8")
+    assert.ok(sec.includes("安全审查员"))
+    assert.ok(sec.includes("name: security-reviewer"))
+    const dev = readFileSync(join(root, ".claude/agents/developer.md"), "utf-8")
+    assert.ok(dev.includes("信任协议")) // 内置模板照常
+  })
+
+  it("pipeline 里缺模板的自定义角色 → 可行动报错", async () => {
+    const { genAgents } = await import("../core/index")
+    ctx.config.pipeline = [...ctx.config.pipeline, "ghost-role"]
+    ctx.config.roles = { ...ctx.config.roles, "ghost-role": { produces: ["doc"] } }
+    assert.throws(() => genAgents(ctx), /ghost-role.*模板/)
+    ctx.config.pipeline = ctx.config.pipeline.filter(r => r !== "ghost-role")
   })
 })

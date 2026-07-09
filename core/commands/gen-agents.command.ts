@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join } from "node:path"
 import { WORKBENCH_DIR } from "../config"
 import { getKindRegistry, kindPathTemplate } from "../kind"
+import { getRoleRegistry } from "../roles"
 import { type AgentSpec, resolveModel, resolvePlatforms } from "../platforms"
 import type { ArtifactKind, Ctx } from "../types"
 
@@ -175,15 +176,21 @@ export function genAgents(ctx: Ctx, templatesDir?: string): GenAgentsResult {
   }
 
   const adapters = resolvePlatforms(ctx.config.platforms)
-  const pipeline = new Set<string>(ctx.config.pipeline)
+  const registry = getRoleRegistry(ctx.config)
   const written: string[] = []
 
-  for (const file of readdirSync(dir)) {
-    if (!file.endsWith(".md")) continue
-    const role = file.replace(/\.md$/, "")
-    // 异构项目:不在流水线里的角色不生成(纯后端无 designer)
-    if (!pipeline.has(role)) continue
-    const tpl = parseTemplate(readFileSync(join(dir, file), "utf-8"))
+  // 遍历集合 = pipeline ∩ 角色注册表;模板解析顺序:项目目录优先(自定义角色的"函数体"),内置兜底
+  const projectTplDir = join(ctx.root, "docs/workbench/templates/agents", lang)
+  for (const role of [...new Set(ctx.config.pipeline)]) {
+    if (!registry[role]) {
+      throw new Error(`pipeline 角色 ${role} 未在角色注册表中定义(内置或 config.roles)`)
+    }
+    const candidates = [join(projectTplDir, `${role}.md`), join(dir, `${role}.md`)]
+    const file = candidates.find(f => existsSync(f))
+    if (!file) {
+      throw new Error(`角色 ${role} 缺少 agent 模板:自定义角色请提供 docs/workbench/templates/agents/${lang}/${role}.md`)
+    }
+    const tpl = parseTemplate(readFileSync(file, "utf-8"))
 
     for (const adapter of adapters) {
       const memory = adapter.memoryBlock(role, lang)

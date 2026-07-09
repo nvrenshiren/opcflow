@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3"
 
-export type Role = "product-manager" | "architect" | "designer" | "developer" | "qa"
+/** 角色是项目语义(迁移 2 已删 DB CHECK):合法值 = 角色注册表键(core/roles.ts + config.roles) */
+export type Role = string
 
 /** agent 生成语言 + 工作台 UI 语言 */
 export type Language = "zh" | "en"
@@ -130,6 +131,8 @@ export interface WorkbenchConfig {
   roleProduces: Record<string, ArtifactKind[]>
   /** 角色注册表覆盖/扩展(与 core/roles.ts 的内置默认深合并):自定义角色由此定义 */
   roles?: Record<string, Partial<import("./roles").RoleSpec>>
+  /** issue intake 分诊(缺省:bug→developer hotfix,其余→product-manager 标准道) */
+  intake?: { bugRole?: string; defaultRole?: string }
   /** 目标 vibecode 平台(生成 agent/MCP/hooks 落地);默认 ["claude"] */
   platforms: string[]
   /** 各平台模型:字符串(全平台同款)或 {platform: model};缺省用各 adapter 默认 */

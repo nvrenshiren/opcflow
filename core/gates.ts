@@ -126,7 +126,8 @@ function approvedRequirements(ctx: Ctx, task: TaskRow): Requirement[] {
 
 function claimRequirements(ctx: Ctx, task: TaskRow): Requirement[] {
   if (task.type !== "build" && task.type !== "qa") return []
-  if (task.role === "product-manager") return []
+  // 流水线头部角色(如 PM)无需特判:注册表 requires 为空,且其产出 kind 的 parents
+  // 全部被 self-produced 排除 → approvedRequirements 恒为空,推导天然等价于早退
   return [...existRequirements(ctx, task), ...approvedRequirements(ctx, task)]
 }
 

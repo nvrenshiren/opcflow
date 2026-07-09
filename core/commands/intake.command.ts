@@ -44,11 +44,14 @@ export function intakeIssues(ctx: Ctx): IntakeSummary {
       continue
     }
     const isBug = issue.labels.some(l => l.name.toLowerCase() === "bug")
+    // 分诊角色可配(config.intake),缺省保持:bug→developer 快车道、其余→PM 标准道
+    const bugRole = ctx.config.intake?.bugRole ?? "developer"
+    const defaultRole = ctx.config.intake?.defaultRole ?? "product-manager"
     const id = createTask(ctx, {
-      role: isBug ? "developer" : "product-manager",
-      endpoint: isBug ? null : null,
+      role: isBug ? bugRole : defaultRole,
+      endpoint: null,
       type: isBug ? "hotfix" : "build",
-      assignee: isBug ? "developer" : "product-manager",
+      assignee: isBug ? bugRole : defaultRole,
       creator: "intake",
       content: `[gh#${issue.number}] ${issue.title}\n${issue.url}`,
       externalRef: ref
