@@ -6,14 +6,16 @@
 import { extractFilePath, hookPlatform, hookProjectDir, readStdinJson } from "./hook-input"
 
 /** 刷新主逻辑;由 `opcflow hook post --platform=X` 或独立入口调用 */
-export async function refreshHook(_platform?: string) {
+export async function refreshHook(platform?: string) {
   const input = await readStdinJson()
-  const filePath = extractFilePath(input)
+  const { getAdapter, PLATFORM_IDS } = await import("../core/platforms")
+  const adapter = platform && (PLATFORM_IDS as string[]).includes(platform) ? getAdapter(platform as any) : undefined
+  const filePath = extractFilePath(input, adapter)
   if (!filePath) return
 
   const { openWorkbench } = await import("../core/db")
   const { refreshArtifact, normalizeRelPath } = await import("../core/commands/artifact.commands")
-  const ctx = openWorkbench(hookProjectDir())
+  const ctx = openWorkbench(hookProjectDir(adapter))
   const rel = normalizeRelPath(ctx, filePath)
 
   // 精确路径命中,或命中某个目录级 code artifact 的前缀

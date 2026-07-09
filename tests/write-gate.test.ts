@@ -109,6 +109,13 @@ describe("写门禁 hook:三档 writeGate × 通行证 × 契约判定", () => {
     assert.equal(wouldBlockCount(p.ctx), 0)
   })
 
+  it("未知平台字符串:respondBlocked 安全退化为 stderr+exit2(不因适配器缺失而 fail-open)", () => {
+    const p = makeGateProject("enforce")
+    const r = runHook(p.root, { platform: "some-future-platform", filePath: p.abs })
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /已审批契约/)
+  })
+
   it("cursor enforce:走 stdout 返回 deny 决策(exit 0),并留 would_block", () => {
     const p = makeGateProject("enforce")
     const r = runHook(p.root, { platform: "cursor", filePath: p.abs })

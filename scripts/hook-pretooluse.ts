@@ -4,14 +4,19 @@
  *   off     不检查
  *   observe 只记 would_block 事件(误拦判据的数据源,人工每周标注),永不拦截 ← 默认
  *   enforce 拦截(平台各自的拒绝出口),观察期误拦率达标后由用户翻开
- * 平台由 --platform=<id> 指定;stdin/项目根按平台归一(见 hook-input）。
+ * 平台由 --platform=<id> 指定;stdin/项目根按平台归一(见 hook-input);
+ * 未知平台(不在 PLATFORM_IDS 里)时 adapter 为 undefined,extractFilePath/hookProjectDir
+ * 走通用兜底,respondBlocked 退化为 stderr+exit2 —— 与改造前行为一致,不因适配器缺失而 fail-open。
  */
 import { extractFilePath, hookPlatform, hookProjectDir, readStdinJson } from "./hook-input"
 
 /** 写门禁主逻辑;由 `opcflow hook pre --platform=X` 或独立入口调用 */
 export async function writeGateHook(platform: string) {
   const input = await readStdinJson()
-  const filePath = extractFilePath(input)
+  const { getAdapter, PLATFORM_IDS } = await import("../core/platforms")
+  const adapter = (PLATFORM_IDS as string[]).includes(platform) ? getAdapter(platform as any) : undefined
+
+  const filePath = extractFilePath(input, adapter)
   if (!filePath) return
 
   const { openWorkbench } = await import("../core/db")
@@ -20,7 +25,7 @@ export async function writeGateHook(platform: string) {
   const { contractKinds } = await import("../core/kind")
   const { logEvent } = await import("../core/events")
 
-  const ctx = openWorkbench(hookProjectDir())
+  const ctx = openWorkbench(hookProjectDir(adapter))
   const mode = ctx.config.gates.writeGate
   if (mode === "off") return
 
@@ -58,14 +63,10 @@ export async function writeGateHook(platform: string) {
       `该文件是已审批契约(${artifact.kind}): ${rel}。\n` +
       `修改前请先领取对应任务:${ctx.config.cli} list --module=${artifact.module ?? ""} --status=pending\n` +
       `领取后设置环境变量 WORKBENCH_TASK_ID=<任务id> 再修改;若对内容本身有异议,用 dispute 命令留痕并停止。`
-    if (platform === "cursor") {
-      // Cursor:stdout 返回 JSON 决策
-      process.stdout.write(JSON.stringify({ permission: "deny", userMessage: msg, agentMessage: msg }))
-      process.exit(0)
-    }
-    // Claude / Codex / 其余:stderr + exit 2 阻断
-    console.error(msg)
-    process.exit(2)
+    const resp = adapter?.respondBlocked(msg) ?? { exitCode: 2, stderr: msg }
+    if (resp.stdout) process.stdout.write(resp.stdout)
+    if (resp.stderr) console.error(resp.stderr)
+    process.exit(resp.exitCode)
   }
 }
 
