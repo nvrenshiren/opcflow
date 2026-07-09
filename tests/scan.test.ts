@@ -241,3 +241,59 @@ describe("scan:自定义 coords 文法(house 式嵌套 flow + endpoint 锚定护
     assert.ok(s.unresolved.includes("docs/design/prototypes/pc/contact.html"))
   })
 })
+
+describe("deriveEdges 对账:残留 derived 边清理,manual 边永不动", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-edges-"))
+  writeFileSync(join(root, "workbench.config.json"), "{}")
+  const write = (rel: string, content: string) => {
+    mkdirSync(join(root, rel, ".."), { recursive: true })
+    writeFileSync(join(root, rel), content)
+  }
+  write("docs/prd/flows/land.md", "# flow")
+  write("docs/prd/modules/land.md", "# land PRD")
+  write("docs/prd/modules/goods.md", "# goods PRD")
+  const ctx = openWorkbenchAt(root)
+  after(() => {
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("坐标漂移后残留的 derived 边被清理;手动边跨 scan 存活", () => {
+    scanArtifacts(ctx)
+    const id = (p: string) => (ctx.db.prepare("SELECT id FROM artifacts WHERE path = ?").get(p) as { id: number }).id
+    const flow = id("docs/prd/flows/land.md")
+    const land = id("docs/prd/modules/land.md")
+    const goods = id("docs/prd/modules/goods.md")
+    const count = (from: number, to: number) =>
+      (ctx.db.prepare("SELECT COUNT(*) c FROM artifact_edges WHERE from_id = ? AND to_id = ?").get(from, to) as { c: number }).c
+
+    assert.equal(count(flow, land), 1) // flow(land) → module-prd(land) 推导成立
+
+    // 手动声明一条推导此刻不会给的边:goods PRD ← land flow
+    ctx.db.prepare("INSERT INTO artifact_edges (from_id, to_id, source) VALUES (?, ?, 'manual')").run(flow, goods)
+
+    // 制造坐标漂移:land 归并进 goods → flow 与 land 的 module-prd 重挂
+    ctx.config.moduleMapping = { land: "goods" }
+    const s = scanArtifacts(ctx)
+    assert.ok(s.remapped >= 2)
+    assert.equal(typeof s.edgesPruned, "number") // 字段存在
+
+    // 对账后:新坐标下 flow(goods) 与两个 module-prd(都 goods)边成立
+    assert.equal(count(flow, land), 1)
+    // 手动边原样存活(即使推导现在也想要它,保持 manual)
+    const manual = ctx.db.prepare("SELECT source FROM artifact_edges WHERE from_id = ? AND to_id = ?").get(flow, goods) as { source: string }
+    assert.equal(manual.source, "manual")
+    scanArtifacts(ctx)
+    assert.equal(count(flow, goods), 1)
+  })
+
+  it("残留清理的直接验证:手工塞一条不可能推导的 derived 边,scan 后被删", () => {
+    const flow = (ctx.db.prepare("SELECT id FROM artifacts WHERE path = 'docs/prd/flows/land.md'").get() as { id: number }).id
+    // 自指边不可能被推导出来 → 必然是残留
+    ctx.db.prepare("INSERT OR IGNORE INTO artifact_edges (from_id, to_id, source) VALUES (?, ?, 'derived')").run(flow, flow)
+    const s = scanArtifacts(ctx)
+    assert.ok(s.edgesPruned >= 1)
+    const c = (ctx.db.prepare("SELECT COUNT(*) c FROM artifact_edges WHERE from_id = ? AND to_id = ?").get(flow, flow) as { c: number }).c
+    assert.equal(c, 0)
+  })
+})

@@ -12,6 +12,10 @@ export interface ScanSummary {
   /** 坐标随 config 收敛(moduleMapping / kind 覆盖等)而重挂的行数 */
   remapped: number
   edges: number
+  /** 对账清理的残留 derived 边数(manual 永不计入) */
+  edgesPruned: number
+  /** 重命名/移动检测:同 hash 唯一候选自动跟随的行数 */
+  moved: number
   skipped: string[]
   /** 命中 kind 但路径不符 coords 文法(非规范 / 废弃端等),未登记 —— 让被丢弃的可见,不静默 mis-file */
   unresolved: string[]
@@ -142,8 +146,8 @@ function expandCodeRoots(ctx: Ctx): { dir: string; endpoint: string; module: str
   return results
 }
 
-/** 按 parents 推导 DAG 边:上游坐标按其 level 与下游坐标对齐(下游更粗时放宽到共有坐标) */
-export function deriveEdges(ctx: Ctx): number {
+/** 按 parents 推导 DAG 边(对账式):重算期望 derived 边集,补缺失、删残留;manual 边永不动 */
+export function deriveEdges(ctx: Ctx): { created: number; pruned: number } {
   const registry = getKindRegistry(ctx.config)
   const artifacts = ctx.db.prepare("SELECT * FROM artifacts").all() as ArtifactRow[]
   const nonMeta = artifacts.filter(a => !registry[a.kind]?.meta)
@@ -155,28 +159,47 @@ export function deriveEdges(ctx: Ctx): number {
     byKind.set(a.kind, list)
   }
 
-  const insert = ctx.db.prepare("INSERT OR IGNORE INTO artifact_edges (from_id, to_id) VALUES (?, ?)")
-  let created = 0
+  // 期望集:上游坐标按其 level 与下游坐标对齐(下游更粗时放宽到共有坐标)
+  const expected = new Set<string>()
+  for (const child of nonMeta) {
+    const parents = registry[child.kind]?.parents ?? []
+    for (const parentKind of parents) {
+      const level: KindLevel = registry[parentKind]?.level ?? "module"
+      const candidates = (byKind.get(parentKind) ?? []).filter(p => {
+        if ((level === "module" || level === "page") && child.module && p.module !== child.module) return false
+        if ((level === "endpoint" || level === "page") && child.endpoint && p.endpoint !== child.endpoint) return false
+        if (level === "page" && child.page && p.page !== child.page) return false
+        return true
+      })
+      for (const parent of candidates) expected.add(`${parent.id}|${child.id}`)
+    }
+  }
 
+  const existing = ctx.db.prepare("SELECT id, from_id, to_id, source FROM artifact_edges").all() as {
+    id: number
+    from_id: number
+    to_id: number
+    source: string
+  }[]
+  const have = new Set(existing.map(e => `${e.from_id}|${e.to_id}`))
+  const insert = ctx.db.prepare("INSERT OR IGNORE INTO artifact_edges (from_id, to_id, source) VALUES (?, ?, 'derived')")
+  const del = ctx.db.prepare("DELETE FROM artifact_edges WHERE id = ?")
+
+  let created = 0
+  let pruned = 0
   const tx = ctx.db.transaction(() => {
-    for (const child of nonMeta) {
-      const parents = registry[child.kind]?.parents ?? []
-      for (const parentKind of parents) {
-        const level: KindLevel = registry[parentKind]?.level ?? "module"
-        const candidates = (byKind.get(parentKind) ?? []).filter(p => {
-          if ((level === "module" || level === "page") && child.module && p.module !== child.module) return false
-          if ((level === "endpoint" || level === "page") && child.endpoint && p.endpoint !== child.endpoint) return false
-          if (level === "page" && child.page && p.page !== child.page) return false
-          return true
-        })
-        for (const parent of candidates) {
-          created += insert.run(parent.id, child.id).changes
-        }
-      }
+    for (const key of expected) {
+      if (have.has(key)) continue // 已存在(含 manual 占位:用户所有权优先,不升格)
+      const [from, to] = key.split("|")
+      created += insert.run(Number(from), Number(to)).changes
+    }
+    for (const e of existing) {
+      if (e.source !== "derived") continue
+      if (!expected.has(`${e.from_id}|${e.to_id}`)) pruned += del.run(e.id).changes
     }
   })
   tx()
-  return created
+  return { created, pruned }
 }
 
 /**
@@ -185,7 +208,7 @@ export function deriveEdges(ctx: Ctx): number {
  * 收尾统一推导 DAG 边。幂等。
  */
 export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
-  const summary: ScanSummary = { registered: 0, refreshed: 0, remapped: 0, edges: 0, skipped: [], unresolved: [] }
+  const summary: ScanSummary = { registered: 0, refreshed: 0, remapped: 0, edges: 0, edgesPruned: 0, moved: 0, skipped: [], unresolved: [] }
 
   const files: string[] = []
   for (const dir of Object.values(ctx.config.docs)) {
@@ -285,6 +308,8 @@ export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
     registerOne(code.dir, "code", { module: code.module, endpoint: code.endpoint, page: null })
   }
 
-  summary.edges = deriveEdges(ctx)
+  const edgeResult = deriveEdges(ctx)
+  summary.edges = edgeResult.created
+  summary.edgesPruned = edgeResult.pruned
   return summary
 }
