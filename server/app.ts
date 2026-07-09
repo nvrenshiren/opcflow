@@ -12,11 +12,13 @@ import {
   submitArtifact
 } from "../core/commands/artifact.commands"
 import { runRetrospective } from "../core/commands/retro.command"
+import { registerAdHocArtifact } from "../core/commands/scan.command"
 import { syncArtifacts } from "../core/commands/sync.command"
 import { WORKBENCH_DIR } from "../core/config"
 import { claimTask, updateTask } from "../core/commands/task.commands"
-import { everApproved, prototypeEndorsed } from "../core/derive"
-import { listEvents } from "../core/events"
+import { everApproved, prototypeEndorsed, reviewStatus } from "../core/derive"
+import { listEvents, logEvent } from "../core/events"
+import { getKindRegistry } from "../core/kind"
 import { buildTree, nodeDetail } from "../core/tree"
 import type { ArtifactRow, Ctx } from "../core/types"
 
@@ -171,6 +173,66 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
   })
 
   // ─── 写 API:全部走 commands 层,gate 错误原样回传 ───────────
+
+  // ─── 关系图:节点 + 边(含来源),供画布渲染 ───────────
+  app.get("/api/graph", async () => {
+    const registry = getKindRegistry(ctx.config)
+    const rows = (ctx.db.prepare("SELECT * FROM artifacts ORDER BY id").all() as ArtifactRow[]).filter(
+      a => !registry[a.kind]?.meta
+    )
+    const ids = new Set(rows.map(a => a.id))
+    const nodes = rows.map(a => ({
+      id: a.id,
+      kind: a.kind,
+      path: a.path,
+      module: a.module,
+      endpoint: a.endpoint,
+      page: a.page,
+      review_status: reviewStatus(a),
+      missing: !existsSync(join(ctx.root, a.path))
+    }))
+    const edges = (
+      ctx.db.prepare("SELECT id, from_id, to_id, source FROM artifact_edges").all() as {
+        id: number
+        from_id: number
+        to_id: number
+        source: string
+      }[]
+    ).filter(e => ids.has(e.from_id) && ids.has(e.to_id))
+    return { nodes, edges }
+  })
+
+  // 名字索引:已登记产物(SQL LIKE)+ 未登记文件(全项目 walk,排噪声目录,各限 30)
+  app.get<{ Querystring: { q?: string } }>("/api/search", async req => {
+    const q = (req.query.q ?? "").trim().toLowerCase()
+    if (!q) return { artifacts: [], files: [] }
+    const like = `%${q.replace(/[%_\\]/g, c => "\\" + c)}%`
+    const artifacts = (
+      ctx.db
+        .prepare("SELECT * FROM artifacts WHERE path LIKE ? ESCAPE '\\' ORDER BY path LIMIT 30")
+        .all(like) as ArtifactRow[]
+    ).map(a => ({ id: a.id, kind: a.kind, path: a.path, module: a.module, endpoint: a.endpoint, review_status: reviewStatus(a) }))
+    const registered = new Set((ctx.db.prepare("SELECT path FROM artifacts").all() as { path: string }[]).map(r => r.path))
+    const files: string[] = []
+    const walk = (dir: string, rel: string) => {
+      if (files.length >= 30) return
+      for (const name of readdirSync(dir).sort()) {
+        if (files.length >= 30) return
+        if (name.startsWith(".") || name === "node_modules" || name === "dist" || name === "build") continue
+        const full = join(dir, name)
+        const relPath = rel ? `${rel}/${name}` : name
+        if (statSync(full).isDirectory()) walk(full, relPath)
+        else if (relPath.toLowerCase().includes(q) && !registered.has(relPath)) files.push(relPath)
+      }
+    }
+    walk(ctx.root, "")
+    return { artifacts, files }
+  })
+
+  // 拖入未登记文件 → 按需登记为产物(幂等)
+  app.post<{ Body: { path: string; actor?: string } }>("/api/artifact/register", async req => {
+    return registerAdHocArtifact(ctx, req.body.path, req.body.actor || "user")
+  })
 
   app.get("/api/review-queue", async () => {
     // 前端依赖 ever_approved(区分"复审中"与首次待审),与 nodeDetail 同口径补齐

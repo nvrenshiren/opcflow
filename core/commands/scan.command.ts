@@ -4,7 +4,7 @@ import { logEvent } from "../events"
 import { hashPath } from "../hash"
 import { expandPattern, getKindRegistry, inferKind, normalizeModule, type KindLevel } from "../kind"
 import type { ArtifactKind, ArtifactRow, Ctx } from "../types"
-import { refreshArtifact } from "./artifact.commands"
+import { normalizeRelPath, refreshArtifact } from "./artifact.commands"
 
 export interface ScanSummary {
   registered: number
@@ -339,4 +339,35 @@ export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
   summary.edges = edgeResult.created
   summary.edgesPruned = edgeResult.pruned
   return summary
+}
+
+/**
+ * 手动登记任意项目文件为产物(关系图拖入用):
+ * 坐标能解析则带上;不符 coords 文法也照登(null 坐标,靠手动边参与关系)。幂等。
+ */
+export function registerAdHocArtifact(ctx: Ctx, relPathRaw: string, actor: string): ArtifactRow {
+  const relPath = normalizeRelPath(ctx, relPathRaw)
+  const existing = ctx.db.prepare("SELECT * FROM artifacts WHERE path = ?").get(relPath) as ArtifactRow | undefined
+  if (existing) return existing
+  const hash = hashPath(join(ctx.root, relPath))
+  if (hash === null) throw new Error(`文件不存在: ${relPath}`)
+  const kind = inferKind(relPath, ctx.config)
+  const coords = parseCoords(ctx, kind, relPath) ?? { module: null, endpoint: null, page: null }
+  const tx = ctx.db.transaction(() => {
+    const r = ctx.db
+      .prepare("INSERT INTO artifacts (kind, module, endpoint, page, path, content_hash) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(kind, coords.module, coords.endpoint, coords.page, relPath, hash)
+    logEvent(ctx.db, {
+      entityType: "artifact",
+      entityId: r.lastInsertRowid as number,
+      event: "scan_registered",
+      actor,
+      payload: { path: relPath, kind, adHoc: true },
+      module: coords.module,
+      endpoint: coords.endpoint,
+      page: coords.page
+    })
+  })
+  tx()
+  return ctx.db.prepare("SELECT * FROM artifacts WHERE path = ?").get(relPath) as ArtifactRow
 }

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, describe, it } from "node:test"
-import { openWorkbenchAt, submitArtifact, type Ctx } from "../core/index"
+import { openWorkbenchAt, scanArtifacts, submitArtifact, type Ctx } from "../core/index"
 import { createServer } from "../server/app"
 
 function makeProject(): Ctx {
@@ -102,6 +102,63 @@ describe("server 路径守卫与待审队列", () => {
 
       const missing = await app.inject({ method: "GET", url: "/proto/admin/user/nope.html" })
       assert.equal(missing.statusCode, 404)
+    } finally {
+      await app.close()
+    }
+  })
+})
+
+describe("关系图 API:graph / search / register", () => {
+  it("graph 返回非元产物节点(带 review_status/missing)与带 source 的边", async () => {
+    const ctx = makeProject()
+    ctxs.push(ctx)
+    mkdirSync(join(ctx.root, "docs/prd/flows"), { recursive: true })
+    mkdirSync(join(ctx.root, "docs/prd/modules"), { recursive: true })
+    writeFileSync(join(ctx.root, "docs/prd/flows/land.md"), "# flow")
+    writeFileSync(join(ctx.root, "docs/prd/modules/land.md"), "# prd")
+    scanArtifacts(ctx)
+
+    const app = await createServer(ctx)
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/graph" })
+      assert.equal(res.statusCode, 200)
+      const g = JSON.parse(res.body) as { nodes: any[]; edges: any[] }
+      assert.equal(g.nodes.length, 2)
+      assert.ok(g.nodes.every(n => typeof n.review_status === "string" && typeof n.missing === "boolean"))
+      assert.equal(g.edges.length, 1)
+      assert.equal(g.edges[0].source, "derived")
+    } finally {
+      await app.close()
+    }
+  })
+
+  it("search 同时命中已登记产物与未登记文件;register 幂等登记任意文件", async () => {
+    const ctx = makeProject()
+    ctxs.push(ctx)
+    mkdirSync(join(ctx.root, "docs/prd/modules"), { recursive: true })
+    writeFileSync(join(ctx.root, "docs/prd/modules/billing.md"), "# billing")
+    mkdirSync(join(ctx.root, "notes"), { recursive: true })
+    writeFileSync(join(ctx.root, "notes/billing-memo.txt"), "memo")
+    scanArtifacts(ctx)
+
+    const app = await createServer(ctx)
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/search?q=billing" })
+      const r = JSON.parse(res.body) as { artifacts: { path: string }[]; files: string[] }
+      assert.ok(r.artifacts.some(a => a.path === "docs/prd/modules/billing.md"))
+      assert.ok(r.files.includes("notes/billing-memo.txt"))
+
+      const reg1 = await app.inject({ method: "POST", url: "/api/artifact/register", payload: { path: "notes/billing-memo.txt", actor: "user" } })
+      assert.equal(reg1.statusCode, 200)
+      const a1 = JSON.parse(reg1.body)
+      const reg2 = await app.inject({ method: "POST", url: "/api/artifact/register", payload: { path: "notes/billing-memo.txt", actor: "user" } })
+      assert.equal(JSON.parse(reg2.body).id, a1.id) // 幂等
+
+      // 登记后从 files 移入 artifacts
+      const res2 = await app.inject({ method: "GET", url: "/api/search?q=billing" })
+      const r2 = JSON.parse(res2.body) as { artifacts: { path: string }[]; files: string[] }
+      assert.ok(!r2.files.includes("notes/billing-memo.txt"))
+      assert.ok(r2.artifacts.some(a => a.path === "notes/billing-memo.txt"))
     } finally {
       await app.close()
     }
