@@ -223,7 +223,8 @@ export function validateComplete(
   const warnings: string[] = []
   if (status !== "completed") return { warnings, inputs: [] }
 
-  if (task.role !== "product-manager" && task.assignee === null) {
+  // 免领取完成是注册表能力(completeWithoutClaim,默认仅 PM),不再是角色字面量特判
+  if (task.assignee === null && !getRoleRegistry(ctx.config)[task.role]?.completeWithoutClaim) {
     throw new Error(`任务尚未被领取,无法更新状态`)
   }
 

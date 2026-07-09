@@ -123,6 +123,10 @@ export function updateTask(
   if (task.assignee !== null && task.assignee !== operator) {
     throw new Error(`只有执行人才能更新任务状态`)
   }
+  // 未领取的任务不能被任意 operator 更新(修复:此前与 PM 免领取特权组合成授权空洞)
+  if (task.assignee === null && operator !== task.role && operator !== task.creator) {
+    throw new Error(`未领取的任务仅创建者或角色本人可更新状态`)
+  }
 
   const { warnings } = validateComplete(ctx, task, status, { force })
 

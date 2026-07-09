@@ -34,12 +34,15 @@ export interface RoleSpec {
   dispatch?: RoleDispatch[]
   /** 产出被 QA fail 时的接锅方式(目前仅 rework 一种语义) */
   onQaFail?: "rework"
+  /** 允许不领取直接完成(流水线头部角色特权,如 PM 由用户直启);未领取完成仍需 operator ∈ {角色本人, 创建者} */
+  completeWithoutClaim?: boolean
 }
 
 /** 内置 5 角色 = 现行为的逐字节编码(dispatch content 与 plan 派发的现字符串一致) */
 export const DEFAULT_ROLE_REGISTRY: Record<string, RoleSpec> = {
   "product-manager": {
-    produces: ["project", "roles", "glossary", "flow", "module-prd", "page-prd"]
+    produces: ["project", "roles", "glossary", "flow", "module-prd", "page-prd"],
+    completeWithoutClaim: true
   },
   architect: {
     produces: ["db-doc", "api-doc"],
