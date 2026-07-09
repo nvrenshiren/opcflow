@@ -272,3 +272,33 @@ describe("关系图 API:产物取消登记(未审批未引用可删;有信任痕
     }
   })
 })
+
+describe("原型预览单源:静态根与 previewUrl 由 kind 注册表推导(pathPatterns 可覆盖)", () => {
+  it("覆盖 prototype pathPatterns=mockups/ → /proto 服务新根,detail 带 previewUrl", async () => {
+    const root = mkdtempSync(join(tmpdir(), "wb-preview-"))
+    writeFileSync(
+      join(root, "workbench.config.json"),
+      JSON.stringify({ kinds: { prototype: { pathPatterns: ["mockups/"] } }, gates: { approvalMode: "warn" } })
+    )
+    const ctx = openWorkbenchAt(root)
+    ctxs.push(ctx)
+    mkdirSync(join(root, "mockups/admin/land"), { recursive: true })
+    writeFileSync(join(root, "mockups/admin/land/list.html"), "<div>proto</div>")
+    const { registerAdHocArtifact } = await import("../core/commands/scan.command")
+    const a = registerAdHocArtifact(ctx, "mockups/admin/land/list.html", "user")
+    assert.equal(a.kind, "prototype") // pathPatterns 覆盖驱动 inferKind
+
+    const app = await createServer(ctx)
+    try {
+      const detail = await app.inject({ method: "GET", url: `/api/artifact/${a.id}` })
+      const d = JSON.parse(detail.body) as { previewUrl: string | null }
+      assert.equal(d.previewUrl, "/proto/admin/land/list.html")
+
+      const page = await app.inject({ method: "GET", url: d.previewUrl! })
+      assert.equal(page.statusCode, 200)
+      assert.match(String(page.headers["content-type"]), /text\/html/)
+    } finally {
+      await app.close()
+    }
+  })
+})

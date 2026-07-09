@@ -107,7 +107,7 @@ const VIEWPORTS = [
   { icon: <DesktopOutlined />, value: 1280, tip: "1280 · 桌面 (admin/pc)" }
 ]
 
-function PrototypeView({ artifact }: { artifact: Artifact }) {
+function PrototypeView({ artifact, url }: { artifact: Artifact; url: string }) {
   const [width, setWidth] = useState(artifact.endpoint === "admin" ? 1280 : 375)
   return (
     <div>
@@ -121,7 +121,7 @@ function PrototypeView({ artifact }: { artifact: Artifact }) {
       />
       <Flex justify="center" style={{ background: SURFACE.raised, padding: 16, borderRadius: 10 }}>
         <iframe
-          src={api.protoUrl(artifact.path)}
+          src={url}
           sandbox="allow-scripts"
           style={{ width, height: "70vh", border: `1px solid ${SURFACE.lineStrong}`, borderRadius: 6, background: "#fff" }}
           title={artifact.path}
@@ -259,8 +259,8 @@ export function ArtifactViewer({ artifact, refreshSignal = 0 }: { artifact: Arti
   if (detail.isDirectory) {
     body = <CodeDirView artifact={artifact} />
     fills = true
-  } else if (artifact.kind === "prototype" || artifact.path.endsWith(".html")) {
-    body = <PrototypeView artifact={artifact} />
+  } else if (detail.previewUrl) {
+    body = <PrototypeView artifact={artifact} url={detail.previewUrl} />
   } else if (artifact.path.endsWith(".md")) {
     body = <MarkdownView content={detail.content ?? ""} />
   } else {

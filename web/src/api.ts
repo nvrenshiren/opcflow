@@ -63,6 +63,8 @@ export interface ArtifactDetail {
   missing: boolean
   feedback: { id: number; verdict: number; comment: string | null; actor: string; created_at: string }[]
   events: WbEvent[]
+  /** 原型预览地址(服务端由 kind 注册表推导;在原型根内才有)——单一真相源,前端勿自行拼路径 */
+  previewUrl: string | null
 }
 
 async function get<T>(url: string): Promise<T> {
@@ -168,13 +170,6 @@ export const api = {
   files: (id: number) => get<{ files: { rel: string; size: number }[] }>(`/api/artifact/${id}/files`),
   file: (id: number, rel: string) => get<{ content: string }>(`/api/artifact/${id}/file?rel=${encodeURIComponent(rel)}`),
   events: (limit = 60) => get<WbEvent[]>(`/api/events?limit=${limit}`),
-  /** 原型静态地址:iframe 直接打开原型文件的真实相对路径(相对 <docs.design>/prototypes),相对资源可正确解析 */
-  protoUrl: (path: string) => {
-    const seg = "/prototypes/"
-    const i = path.lastIndexOf(seg)
-    const rel = i >= 0 ? path.slice(i + seg.length) : path.split("/").pop() || path
-    return encodeURI(`/proto/${rel}`)
-  },
   // ─── 关系图 ───
   graph: () => get<{ nodes: GraphNode[]; edges: GraphEdge[] }>(`/api/graph`),
   searchFiles: (q: string) =>

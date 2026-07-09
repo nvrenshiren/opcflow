@@ -18,7 +18,7 @@ import { WORKBENCH_DIR } from "../core/config"
 import { claimTask, updateTask } from "../core/commands/task.commands"
 import { everApproved, prototypeEndorsed, reviewStatus } from "../core/derive"
 import { listEvents, logEvent } from "../core/events"
-import { getKindRegistry } from "../core/kind"
+import { expandPattern, getKindRegistry } from "../core/kind"
 import { buildTree, nodeDetail } from "../core/tree"
 import type { ArtifactRow, Ctx } from "../core/types"
 
@@ -53,11 +53,17 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
   }
 
   // 原型静态服务:iframe 直接指向原型文件的真实相对路径,HTML 里的相对资源(css/js/img)
-  // 才能正确解析——不再经 /raw 把内容读成文本吐回(那样相对路径会以 API 路径为基准而 404)。
-  // 作用域仅限 <docs.design>/prototypes 子树,不暴露整个项目(默认 0.0.0.0 下尤为重要)。
-  const protoRoot = join(ctx.root, ctx.config.docs.design, "prototypes")
+  // 才能正确解析。静态根由 kind 注册表的 prototype.pathPatterns[0] 推导(单一真相源——
+  // 项目覆盖 pathPatterns 后,/proto 与 previewUrl 自动跟随,前端不再自行解析路径)。
+  // 作用域仅限原型子树,不暴露整个项目(默认 0.0.0.0 下尤为重要)。
+  const protoPattern = getKindRegistry(ctx.config).prototype.pathPatterns?.[0]
+  const protoRel = (protoPattern ? expandPattern(protoPattern, ctx.config) : `${ctx.config.docs.design}/prototypes/`).replace(/\/+$/, "")
+  const protoRoot = join(ctx.root, protoRel)
   mkdirSync(protoRoot, { recursive: true })
   await app.register(fastifyStatic, { root: protoRoot, prefix: "/proto/", decorateReply: false })
+  /** 产物 → 预览地址(在原型根内才有;单一真相源,前端直接用) */
+  const previewUrlOf = (a: ArtifactRow): string | null =>
+    a.path.startsWith(protoRel + "/") ? encodeURI(`/proto/${a.path.slice(protoRel.length + 1)}`) : null
 
   app.get("/api/meta", async () => ({
     root: ctx.root,
@@ -104,7 +110,7 @@ export async function createServer(ctx: Ctx): Promise<FastifyInstance> {
     } else if (statSync(abs).size <= MAX_INLINE_SIZE) {
       content = readFileSync(abs, "utf-8")
     }
-    return { artifact, content, isDirectory, missing, feedback, events }
+    return { artifact, content, isDirectory, missing, feedback, events, previewUrl: previewUrlOf(artifact) }
   })
 
   app.get<{ Params: { id: string } }>("/api/artifact/:id/files", async req => {
