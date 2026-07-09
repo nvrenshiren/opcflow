@@ -26,6 +26,17 @@ export interface KindSpec {
    * 以 / 结尾 = 前缀匹配,否则精确匹配。按注册表插入顺序首匹配生效。
    */
   pathPatterns?: string[]
+  /**
+   * 坐标文法(相对 pathPatterns[0] 前缀,占位符 {module}/{endpoint}/{page}):
+   * - 单占位符 `{X}` → 绑定叶子文件名(忽略中间目录),复现「模块=文件名」类约定;
+   * - 多段如 `{endpoint}/{module}/{page}` → 从前缀起按位匹配,`{page}` 贪婪吃尾,
+   *   捕获的 `{endpoint}` 必须 ∈ config.endpoints,否则该文件不解析(warn/skip)。
+   * 缺省时该 kind 不解析坐标(module/endpoint/page 全 null,仍照常登记)。
+   * 项目层经 config.kinds 覆盖即可自定义内层目录约定。
+   */
+  coords?: string
+  /** coords 未捕获 {endpoint} 时的固定端(如 db-doc=common、api-doc=service) */
+  defaultEndpoint?: string
   /** 元产物:业务树默认过滤,scan 排除(走显式 register-meta) */
   meta?: boolean
 }
@@ -41,15 +52,15 @@ export const DEFAULT_KIND_REGISTRY: Record<ArtifactKind, KindSpec> = {
   project: { level: "project", approval: "human", parents: [], drivesStale: true, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{prd}/project.md"] },
   roles: { level: "project", approval: "human", parents: ["project"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/roles.md"] },
   glossary: { level: "project", approval: "human", parents: ["project"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/glossary.md"] },
-  flow: { level: "module", approval: "human", parents: ["project", "roles", "glossary"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/flows/"] },
-  "module-prd": { level: "module", approval: "human", parents: ["flow"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/modules/"] },
-  "page-prd": { level: "page", approval: "human", parents: ["module-prd"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/pages/"] },
-  "db-doc": { level: "module", approval: "human", parents: ["module-prd"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{architecture}/database/"] },
-  "api-doc": { level: "module", approval: "human", parents: ["module-prd", "db-doc"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{architecture}/api/"] },
-  "design-system": { level: "endpoint", approval: "human", parents: ["baseline"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{design}/systems/"] },
-  "design-prompt": { level: "page", approval: "none", parents: ["page-prd", "api-doc", "design-system"], drivesStale: false, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{design}/prompts/"] },
-  prototype: { level: "page", approval: "thumbs", parents: ["design-prompt", "design-system"], drivesStale: true, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{design}/prototypes/"] },
-  acceptance: { level: "page", approval: "human", parents: ["page-prd", "prototype"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{acceptance}/"] },
+  flow: { level: "module", approval: "human", parents: ["project", "roles", "glossary"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/flows/"], coords: "{module}", defaultEndpoint: "common" },
+  "module-prd": { level: "module", approval: "human", parents: ["flow"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/modules/"], coords: "{module}", defaultEndpoint: "common" },
+  "page-prd": { level: "page", approval: "human", parents: ["module-prd"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{prd}/pages/"], coords: "{endpoint}/{module}/{page}" },
+  "db-doc": { level: "module", approval: "human", parents: ["module-prd"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{architecture}/database/"], coords: "{module}", defaultEndpoint: "common" },
+  "api-doc": { level: "module", approval: "human", parents: ["module-prd", "db-doc"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{architecture}/api/"], coords: "{module}", defaultEndpoint: "service" },
+  "design-system": { level: "endpoint", approval: "human", parents: ["baseline"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{design}/systems/"], coords: "{endpoint}" },
+  "design-prompt": { level: "page", approval: "none", parents: ["page-prd", "api-doc", "design-system"], drivesStale: false, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{design}/prompts/"], coords: "{endpoint}/{module}/{page}" },
+  prototype: { level: "page", approval: "thumbs", parents: ["design-prompt", "design-system"], drivesStale: true, hashMode: "text-normalize", retrieval: "summary", pathPatterns: ["{design}/prototypes/"], coords: "{endpoint}/{module}/{page}" },
+  acceptance: { level: "page", approval: "human", parents: ["page-prd", "prototype"], drivesStale: true, hashMode: "text-normalize", retrieval: "full", pathPatterns: ["{acceptance}/"], coords: "{endpoint}/{module}/{page}" },
   code: { level: "module", approval: "machine", parents: ["baseline", "api-doc", "prototype"], drivesStale: false, hashMode: "directory", retrieval: "semantic" },
   doc: { level: "module", approval: "none", parents: [], drivesStale: false, hashMode: "text-normalize", retrieval: "summary" }
 }
@@ -105,7 +116,7 @@ export const KIND_TIERS: ArtifactKind[][] = [
   ["code"]
 ]
 
-function expandPattern(pattern: string, config: WorkbenchConfig): string {
+export function expandPattern(pattern: string, config: WorkbenchConfig): string {
   return pattern
     .replace("{prd}", config.docs.prd)
     .replace("{architecture}", config.docs.architecture)

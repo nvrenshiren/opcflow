@@ -193,3 +193,51 @@ describe("scan:坐标随 config 收敛(remap)", () => {
     assert.equal(scanArtifacts(ctx).remapped, 0)
   })
 })
+
+describe("scan:自定义 coords 文法(house 式嵌套 flow + endpoint 锚定护栏)", () => {
+  const root = mkdtempSync(join(tmpdir(), "wb-coords-"))
+  writeFileSync(
+    join(root, "workbench.config.json"),
+    JSON.stringify({
+      endpoints: ["admin", "app"], // 注意:pc 不在声明端里
+      kinds: { flow: { coords: "{module}/{endpoint}" } } // house 有意:flow 按端拆分
+    })
+  )
+  const write = (rel: string, content: string) => {
+    mkdirSync(join(root, rel, ".."), { recursive: true })
+    writeFileSync(join(root, rel), content)
+  }
+  write("docs/prd/flows/ad/admin.md", "# ad admin flow")
+  write("docs/prd/flows/ad/app.md", "# ad app flow")
+  write("docs/design/prototypes/admin/user/list.html", "<div>list</div>")
+  write("docs/design/prototypes/admin/user/sub/detail.html", "<div>detail</div>") // 深层 page
+  write("docs/design/prototypes/pc/contact.html", "<div>pc</div>") // pc 已删端,应被护栏丢弃
+  const ctx = openWorkbenchAt(root)
+  after(() => {
+    ctx.db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it("嵌套 flow 按端落位;深层 page 支持;非声明端 pc 进 unresolved 不登记", () => {
+    const s = scanArtifacts(ctx)
+    const byPath = Object.fromEntries(listArtifacts(ctx, {}).map(a => [a.path, a]))
+
+    // flow 覆盖为 {module}/{endpoint}:目录=模块、文件=端
+    const fAdmin = byPath["docs/prd/flows/ad/admin.md"]
+    assert.deepEqual([fAdmin.kind, fAdmin.module, fAdmin.endpoint], ["flow", "ad", "admin"])
+    assert.deepEqual(
+      [byPath["docs/prd/flows/ad/app.md"].module, byPath["docs/prd/flows/ad/app.md"].endpoint],
+      ["ad", "app"]
+    )
+
+    // prototype 默认 {endpoint}/{module}/{page}
+    const proto = byPath["docs/design/prototypes/admin/user/list.html"]
+    assert.deepEqual([proto.endpoint, proto.module, proto.page], ["admin", "user", "user/list"])
+    // {page} 贪婪吃尾 → 深层页面也能落位
+    assert.equal(byPath["docs/design/prototypes/admin/user/sub/detail.html"].page, "user/sub/detail")
+
+    // 首段 pc ∉ endpoints → 护栏丢弃,不 mis-file
+    assert.equal(byPath["docs/design/prototypes/pc/contact.html"], undefined)
+    assert.ok(s.unresolved.includes("docs/design/prototypes/pc/contact.html"))
+  })
+})

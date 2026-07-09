@@ -53,4 +53,13 @@
 - **`legacyDb`** `string`(默认 `tasks/task.db`)—— `migrate` 默认读取的旧库路径。
 - **`cli`** `string`(默认 `npx -y @dawipong/opcflow`)—— 注入到 agent 定义、MCP、hooks、gate 报错里的命令前缀;换机器 / 团队协作免重装即靠它。
 - **`roleProduces`** `Record<角色, kind[]>` —— 各角色产出的 kind,gate 的上游选择器据此派生。
-- **`kinds`** `Record<kind, {...}>` —— 覆盖 / 扩展 kind 注册表(与 core 默认表深合并),调 kind 的审批方式 / 层级 / 是否驱动 stale 等。极少用。
+- **`kinds`** `Record<kind, {...}>` —— 覆盖 / 扩展 kind 注册表(与 core 默认表深合并),调 kind 的审批方式 / 层级 / 是否驱动 stale,以及**坐标文法 `coords`**。
+  - **`coords`**:该 kind 的文件路径如何映射到坐标 `(module, endpoint, page)`,相对其 `pathPatterns[0]` 前缀,占位符 `{module}/{endpoint}/{page}`:
+    - 单占位符 `{X}` → 绑定**叶子文件名**(忽略中间目录)。默认:`flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`、`design-system` = `{endpoint}`。
+    - 多段如 `{endpoint}/{module}/{page}`(page/prototype/prompt/acceptance 默认)→ 从前缀起**按位**匹配,`{page}` 贪婪吃尾;捕获的 `{endpoint}` **必须 ∈ `endpoints`**,否则该文件不解析(scan 记入 unresolved 并跳过,不 mis-file)。
+    - `defaultEndpoint`:`coords` 未捕获 `{endpoint}` 时的固定端(默认 db-doc=common、api-doc=service)。
+  - **示例**:某项目的 flow 按端拆分(`flows/<模块>/<端>.md`),只需覆盖一行:
+    ```jsonc
+    "kinds": { "flow": { "coords": "{module}/{endpoint}" } }
+    ```
+    此后 `flows/ad/admin.md` → 模块 `ad`、端 `admin`;`flows/ad/app.md` → 模块 `ad`、端 `app`。默认值一律等于内置约定,不配即现状。

@@ -53,4 +53,13 @@ Fields fall into two groups: **frequently tuned** and **rarely touched (advanced
 - **`legacyDb`** `string` (default `tasks/task.db`) —— the legacy DB path `migrate` reads by default.
 - **`cli`** `string` (default `npx -y @dawipong/opcflow`) —— the command prefix injected into agent definitions, MCP, hooks, and gate errors; this is what makes machine-switch / team collaboration reinstall-free.
 - **`roleProduces`** `Record<role, kind[]>` —— the kinds each role produces; the gate's upstream selector is derived from this.
-- **`kinds`** `Record<kind, {...}>` —— override/extend the kind registry (deep-merged with the core default table), tuning a kind's approval mode / tier / whether it drives stale. Rarely needed.
+- **`kinds`** `Record<kind, {...}>` —— override/extend the kind registry (deep-merged with the core default table), tuning a kind's approval mode / tier / whether it drives stale, and its **coordinate grammar `coords`**.
+  - **`coords`**: how this kind's file paths map to `(module, endpoint, page)`, relative to its `pathPatterns[0]` prefix, with placeholders `{module}/{endpoint}/{page}`:
+    - A single placeholder `{X}` → binds to the **leaf filename** (ignoring intermediate dirs). Defaults: `flow`/`module-prd`/`db-doc`/`api-doc` = `{module}`, `design-system` = `{endpoint}`.
+    - Multi-segment like `{endpoint}/{module}/{page}` (default for page/prototype/prompt/acceptance) → matched **positionally** from the prefix, `{page}` greedily takes the tail; a captured `{endpoint}` **must be in `endpoints`**, otherwise the file isn't parsed (scan records it under `unresolved` and skips it — no mis-filing).
+    - `defaultEndpoint`: the fixed endpoint when `coords` captures no `{endpoint}` (defaults: db-doc=common, api-doc=service).
+  - **Example**: a project that splits flows per endpoint (`flows/<module>/<endpoint>.md`) only overrides one line:
+    ```jsonc
+    "kinds": { "flow": { "coords": "{module}/{endpoint}" } }
+    ```
+    Then `flows/ad/admin.md` → module `ad`, endpoint `admin`; `flows/ad/app.md` → module `ad`, endpoint `app`. All defaults equal the built-in conventions — unset means current behavior.

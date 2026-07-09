@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { logEvent } from "../events"
 import { hashPath } from "../hash"
-import { getKindRegistry, inferKind, normalizeModule, type KindLevel } from "../kind"
+import { expandPattern, getKindRegistry, inferKind, normalizeModule, type KindLevel } from "../kind"
 import type { ArtifactKind, ArtifactRow, Ctx } from "../types"
 import { refreshArtifact } from "./artifact.commands"
 
@@ -13,6 +13,8 @@ export interface ScanSummary {
   remapped: number
   edges: number
   skipped: string[]
+  /** 命中 kind 但路径不符 coords 文法(非规范 / 废弃端等),未登记 —— 让被丢弃的可见,不静默 mis-file */
+  unresolved: string[]
 }
 
 interface Coords {
@@ -21,40 +23,60 @@ interface Coords {
   page: string | null
 }
 
+const stripExt = (s: string): string => s.replace(/\.(md|html)$/i, "")
+
 /**
- * 按 kind 的路径约定解析坐标。
- * page 存 `{module}/{页面名}`(与 legacy 数据一致);
- * db-doc 挂 common、api-doc 挂 service(与 legacy 登记口径一致,gate 按 module 级过滤不受影响)。
+ * 按 kind 的 coords 文法解析坐标(相对 pathPatterns[0] 前缀)。
+ * - 无 coords 文法 → 全 null 坐标(baseline/project/code 等,照常登记);
+ * - 单占位符 `{X}` → 绑定叶子文件名(忽略中间目录):复现 flow/module-prd/db/api「模块=文件名」、
+ *   design-system「端=文件名」;endpoint 缺省用 defaultEndpoint;
+ * - 多段 `{endpoint}/{module}/{page}` → 从前缀起按位,`{page}` 贪婪吃尾,`page` 存 `{module}/{页尾}`;
+ *   捕获的 `{endpoint}` 必须 ∈ config.endpoints,否则返回 null(交调用方 warn/skip,丢弃 pc/old 这类非规范/废弃端)。
+ * 返回 null = 命中 kind 但不符文法,不登记。
  */
-function parseCoords(ctx: Ctx, kind: ArtifactKind, relPath: string): Coords {
+function parseCoords(ctx: Ctx, kind: ArtifactKind, relPath: string): Coords | null {
   const none: Coords = { module: null, endpoint: null, page: null }
-  const base = (p: string) => p.split("/").pop()!.replace(/\.(md|html)$/i, "")
-  const seg = relPath.split("/")
+  const spec = getKindRegistry(ctx.config)[kind]
+  const grammar = spec?.coords
+  if (!grammar) return none
+
+  const prefix = spec.pathPatterns?.[0] ? expandPattern(spec.pathPatterns[0], ctx.config) : ""
+  const tail = relPath.startsWith(prefix) ? relPath.slice(prefix.length) : relPath
+  const tailSegs = tail.split("/").filter(Boolean)
+  const gSegs = grammar.split("/")
+  const defEnd = spec.defaultEndpoint ?? null
   const mod = (raw: string) => normalizeModule(raw, ctx.config)
 
-  switch (kind) {
-    case "flow":
-    case "module-prd":
-      return { module: mod(base(relPath)), endpoint: "common", page: null }
-    case "db-doc":
-      return { module: mod(base(relPath)), endpoint: "common", page: null }
-    case "api-doc":
-      return { module: mod(base(relPath)), endpoint: "service", page: null }
-    case "design-system":
-      return { module: null, endpoint: base(relPath), page: null }
-    case "page-prd":
-    case "design-prompt":
-    case "prototype":
-    case "acceptance": {
-      // {root...}/{endpoint}/{module}/{page}.md — 从尾部取三段
-      if (seg.length < 3) return none
-      const endpoint = seg[seg.length - 3]
-      const module = mod(seg[seg.length - 2])
-      return { module, endpoint, page: `${module}/${base(relPath)}` }
-    }
-    default:
-      return none
+  // 单占位符:绑定叶子文件名,忽略中间目录
+  if (gSegs.length === 1) {
+    if (tailSegs.length === 0) return null
+    const leaf = stripExt(tailSegs[tailSegs.length - 1])
+    if (gSegs[0] === "{module}") return { module: mod(leaf), endpoint: defEnd, page: null }
+    if (gSegs[0] === "{endpoint}") return { module: null, endpoint: leaf, page: null }
+    return none
   }
+
+  // 多段:从前缀起按位;{page} 贪婪吃尾
+  const hasPage = gSegs[gSegs.length - 1] === "{page}"
+  const fixed = hasPage ? gSegs.length - 1 : gSegs.length
+  if (hasPage ? tailSegs.length < gSegs.length : tailSegs.length !== gSegs.length) return null
+
+  const cap: Record<string, string> = {}
+  for (let i = 0; i < fixed; i++) cap[gSegs[i]] = stripExt(tailSegs[i])
+
+  // endpoint 锚定护栏:多段捕获的端必须是已声明端,否则丢弃(非规范 / 已删端)
+  if (cap["{endpoint}"] !== undefined && !ctx.config.endpoints.includes(cap["{endpoint}"])) return null
+
+  const endpoint = cap["{endpoint}"] ?? defEnd
+  const module = cap["{module}"] !== undefined ? mod(cap["{module}"]) : null
+
+  let page: string | null = null
+  if (hasPage) {
+    const pageSegs = tailSegs.slice(fixed)
+    const pageTail = pageSegs.map((s, i) => (i === pageSegs.length - 1 ? stripExt(s) : s)).join("/")
+    page = module ? `${module}/${pageTail}` : pageTail
+  }
+  return { module, endpoint, page }
 }
 
 function isMetaPath(ctx: Ctx, relPath: string): boolean {
@@ -163,7 +185,7 @@ export function deriveEdges(ctx: Ctx): number {
  * 收尾统一推导 DAG 边。幂等。
  */
 export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
-  const summary: ScanSummary = { registered: 0, refreshed: 0, remapped: 0, edges: 0, skipped: [] }
+  const summary: ScanSummary = { registered: 0, refreshed: 0, remapped: 0, edges: 0, skipped: [], unresolved: [] }
 
   const files: string[] = []
   for (const dir of Object.values(ctx.config.docs)) {
@@ -193,7 +215,7 @@ export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
     content_hash: string
   }
 
-  const registerOne = (relPath: string, kind: ArtifactKind, coords: Coords) => {
+  const registerOne = (relPath: string, kind: ArtifactKind, coords: Coords | null) => {
     const row = exists.get(relPath) as ExistingRow | undefined
     if (row) {
       const before = row.content_hash
@@ -202,7 +224,8 @@ export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
 
       // 坐标随 config 收敛:path 不变但 moduleMapping / kind 覆盖等使 kind/坐标漂移时重挂。
       // 内容 hash 不参与 → 审批锚点(approved_hash vs content_hash)不受影响。
-      if (row.kind !== kind || row.module !== coords.module || row.endpoint !== coords.endpoint || row.page !== coords.page) {
+      // coords 为 null(现约定下不再可解析)→ 不动坐标,保持已登记状态。
+      if (coords && (row.kind !== kind || row.module !== coords.module || row.endpoint !== coords.endpoint || row.page !== coords.page)) {
         const tx = ctx.db.transaction(() => {
           remap.run(kind, coords.module, coords.endpoint, coords.page, row.id)
           logEvent(ctx.db, {
@@ -223,6 +246,11 @@ export function scanArtifacts(ctx: Ctx, actor = "system"): ScanSummary {
         tx()
         summary.remapped++
       }
+      return
+    }
+    // 新文件但坐标无法解析(命中 kind、路径不符 coords 文法)→ 不登记,记入 unresolved 让其可见
+    if (!coords) {
+      summary.unresolved.push(relPath)
       return
     }
     const hash = hashPath(join(ctx.root, relPath))
