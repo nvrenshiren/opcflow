@@ -58,13 +58,18 @@ interface Requirement {
   filter: ArtifactFilter
 }
 
-/** 该任务产出哪些 kind(gate 上游选择器的起点;designer 按任务形态分流) */
+/**
+ * 该任务产出哪些 kind(gate 上游选择器的起点):
+ * 按注册表 dispatch 形态匹配——page 任务对 at:"page" 规则、无 page 任务对 at:"module"/"endpoint" 规则,
+ * 命中带 produces 覆盖的规则则用之,否则回落 role.produces。
+ * designer 的 page/端级产出分裂由默认注册表的 dispatch.produces 承载,不再是引擎特例。
+ */
 function producedKinds(ctx: Ctx, task: TaskRow): ArtifactKind[] {
-  const declared = (ctx.config.roleProduces[task.role] ?? []) as ArtifactKind[]
-  if (task.role === "designer") {
-    return task.page ? declared.filter(k => k !== "design-system") : ["design-system"]
-  }
-  return declared
+  const spec = getRoleRegistry(ctx.config)[task.role]
+  if (!spec) return []
+  const wantPage = !!task.page
+  const rule = (spec.dispatch ?? []).find(d => (wantPage ? d.at === "page" : d.at !== "page") && d.produces)
+  return rule?.produces ?? spec.produces
 }
 
 /**
