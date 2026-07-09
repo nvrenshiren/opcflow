@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process"
 import { moduleCleared, prototypeEndorsed, reviewStatus, taskStaleness } from "./derive"
-import { PM_KINDS, getKindRegistry, kindSpec, type KindLevel } from "./kind"
+import { getKindRegistry, kindSpec, type KindLevel } from "./kind"
 import { runProtocolLints } from "./lints"
+import { getRoleRegistry } from "./roles"
 import type { ArtifactKind, ArtifactRow, Ctx, TaskRow } from "./types"
 
 export interface GateResult {
@@ -66,26 +67,24 @@ function producedKinds(ctx: Ctx, task: TaskRow): ArtifactKind[] {
   return declared
 }
 
-/** exist 级要求:旧 CLI 行为等价的保守下限,保证存量流程不被 approved 级噪音阻断 */
-function existRequirements(task: TaskRow): Requirement[] {
-  const m = task.module
-  switch (task.role) {
-    case "architect":
-    case "designer":
-      return [{ desc: "PM 产出(模块/页面 PRD)", level: "exist", kinds: PM_KINDS, filter: { module: m } }]
-    case "developer": {
-      if (task.endpoint === "service") {
-        return [{ desc: "数据库文档", level: "exist", kinds: ["db-doc"], filter: { module: m } }]
-      }
-      return [
-        { desc: "数据库文档", level: "exist", kinds: ["db-doc"], filter: { module: m } },
-        { desc: "API 文档", level: "exist", kinds: ["api-doc"], filter: { module: m } },
-        { desc: `designer ${task.endpoint} 设计稿`, level: "exist", kinds: ["design-prompt", "prototype"], filter: { module: m, endpoint: task.endpoint } }
-      ]
-    }
-    default:
-      return []
+/**
+ * exist 级要求:由角色注册表 requires 派生(封闭 when 谓词:endpoint / endpointNot)。
+ * 保守下限语义不变——保证存量流程不被 approved 级噪音阻断;默认注册表逐字节编码旧 switch。
+ */
+function existRequirements(ctx: Ctx, task: TaskRow): Requirement[] {
+  const spec = getRoleRegistry(ctx.config)[task.role]
+  const reqs: Requirement[] = []
+  for (const r of spec?.requires ?? []) {
+    if (r.when?.endpoint && task.endpoint !== r.when.endpoint) continue
+    if (r.when?.endpointNot && task.endpoint === r.when.endpointNot) continue
+    // 设计稿类要求按端过滤(旧行为:developer 前端任务查本端设计稿),其余按模块
+    const filter: ArtifactFilter =
+      r.kinds.includes("design-prompt") || r.kinds.includes("prototype")
+        ? { module: task.module, endpoint: task.endpoint }
+        : { module: task.module }
+    reqs.push({ desc: r.desc.replaceAll("{endpoint}", task.endpoint ?? ""), level: "exist", kinds: r.kinds, filter })
   }
+  return reqs
 }
 
 /**
@@ -123,7 +122,7 @@ function approvedRequirements(ctx: Ctx, task: TaskRow): Requirement[] {
 function claimRequirements(ctx: Ctx, task: TaskRow): Requirement[] {
   if (task.type !== "build" && task.type !== "qa") return []
   if (task.role === "product-manager") return []
-  return [...existRequirements(task), ...approvedRequirements(ctx, task)]
+  return [...existRequirements(ctx, task), ...approvedRequirements(ctx, task)]
 }
 
 /** approved 级满足判定:按注册表 approval 通道分发(thumbs → 👍,human → 审批四态) */

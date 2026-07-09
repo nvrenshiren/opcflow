@@ -126,8 +126,10 @@ export interface WorkbenchConfig {
   kinds?: Record<string, Record<string, unknown>>
   /** 角色流水线(phase 派生顺序) */
   pipeline: Role[]
-  /** 角色产出 kind(gate 上游选择器派生依据);designer 按任务形态在 core 内分流 */
+  /** 角色产出 kind(gate 上游选择器派生依据);已升格为角色注册表的 produces 维度旧别名 */
   roleProduces: Record<string, ArtifactKind[]>
+  /** 角色注册表覆盖/扩展(与 core/roles.ts 的内置默认深合并):自定义角色由此定义 */
+  roles?: Record<string, Partial<import("./roles").RoleSpec>>
   /** 目标 vibecode 平台(生成 agent/MCP/hooks 落地);默认 ["claude"] */
   platforms: string[]
   /** 各平台模型:字符串(全平台同款)或 {platform: model};缺省用各 adapter 默认 */

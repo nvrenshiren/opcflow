@@ -4,14 +4,14 @@ import { validateClaim, validateComplete } from "../gates"
 import { gitHead, touchedByTaskTrailer, touchedSince } from "../git"
 import { closeLinkedIssue } from "../gh"
 import { contractKinds, normalizeModule } from "../kind"
+import { getRoleRegistry } from "../roles"
 import { normalizeRelPath } from "./artifact.commands"
 import { ownerRole } from "./sync.command"
 import type { ArtifactRow, Ctx, EventRow, Role, TaskRow, TaskStatus, TaskType } from "../types"
 
 const VALID_STATUS: TaskStatus[] = ["pending", "in_progress", "completed", "cancelled"]
-// role/type 是项目语义:不走 DB CHECK,校验下沉到代码层(可由 config 覆盖)
+// role/type 是项目语义:不走 DB CHECK,校验下沉到代码层(role 由角色注册表派生,config.roles 可扩)
 const VALID_TYPES: TaskType[] = ["build", "review", "qa", "hotfix", "baseline", "legacy", "rework"]
-const VALID_ROLES: Role[] = ["product-manager", "architect", "designer", "developer", "qa"]
 
 export interface CreateTaskParams {
   module?: string | null
@@ -28,7 +28,8 @@ export interface CreateTaskParams {
 export function createTask(ctx: Ctx, p: CreateTaskParams): number {
   const type = p.type ?? "build"
   if (!VALID_TYPES.includes(type)) throw new Error(`无效的任务类型: ${type},可选值: ${VALID_TYPES.join(", ")}`)
-  if (!VALID_ROLES.includes(p.role)) throw new Error(`无效的角色: ${p.role},可选值: ${VALID_ROLES.join(", ")}`)
+  const validRoles = Object.keys(getRoleRegistry(ctx.config))
+  if (!validRoles.includes(p.role)) throw new Error(`无效的角色: ${p.role},可选值: ${validRoles.join(", ")}`)
   const module = normalizeModule(p.module, ctx.config)
 
   const tx = ctx.db.transaction(() => {
