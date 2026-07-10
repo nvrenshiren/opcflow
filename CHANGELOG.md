@@ -1,3 +1,10 @@
+## [0.10.2](https://github.com/nvrenshiren/opcflow/compare/v0.10.1...v0.10.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* OpenCode 插件生成产物首行加 // [@ts-nocheck](https://github.com/ts-nocheck),消除宿主项目类型误报 ([1c88305](https://github.com/nvrenshiren/opcflow/commit/1c883054b838e057b111290d0bbc4274decaf5e1))
+
 ## [0.10.1](https://github.com/nvrenshiren/opcflow/compare/v0.10.0...v0.10.1) (2026-07-10)
 
 
