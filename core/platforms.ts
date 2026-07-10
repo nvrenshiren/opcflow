@@ -306,7 +306,9 @@ const opencode: PlatformAdapter = {
   writeHooks(root, wire) {
     // OpenCode 的 hook 是进程内 JS 插件:写一个薄壳,把工具事件转发给 opcflow hook 脚本
     const rel = ".opencode/plugins/opcflow.ts"
-    const plugin = `// opcflow:把工具调用前后事件转发给 hook 脚本(观测写门禁 + 刷新 hash)
+    const plugin = `// @ts-nocheck
+// opcflow 生成的 OpenCode 插件:桥接壳,由 OpenCode(Bun)运行时直接执行,不参与宿主项目类型检查
+// 把工具调用前后事件转发给 hook 脚本(观测写门禁 + 刷新 hash)
 import { spawn } from "node:child_process"
 
 function runHook(cmd: string, payload: unknown): Promise<void> {

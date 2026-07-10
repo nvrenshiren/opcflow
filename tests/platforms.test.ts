@@ -113,6 +113,9 @@ describe("platform adapter:hooks 写入", () => {
   it("opencode:生成 .opencode/plugins/opcflow.ts 插件薄壳", () => {
     getAdapter("opencode").writeHooks(root, wire)
     const plugin = readFileSync(join(root, ".opencode/plugins/opcflow.ts"), "utf-8")
+    // 首行必须是 // @ts-nocheck:插件是生成产物,跑在 OpenCode/Bun 运行时,不该让宿主项目对它做类型检查
+    // (否则 node:child_process 的 ChildProcessByStdio 类型链在 @types/node 与 Bun 类型共存时会误报"不存在属性 on")
+    assert.ok(plugin.startsWith("// @ts-nocheck"))
     assert.ok(plugin.includes("tool.execute.before"))
     assert.ok(plugin.includes("PRE --platform=x"))
   })
