@@ -1,3 +1,10 @@
+## [0.10.1](https://github.com/nvrenshiren/opcflow/compare/v0.10.0...v0.10.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* init 交互式平台选择改为多选(checkbox),此前误做成单选 ([949f3b9](https://github.com/nvrenshiren/opcflow/commit/949f3b9cd18036ca3b9547fc3d20a003634dcb79))
+
 # [0.10.0](https://github.com/nvrenshiren/opcflow/compare/v0.9.0...v0.10.0) (2026-07-09)
 
 
