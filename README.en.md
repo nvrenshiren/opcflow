@@ -6,9 +6,11 @@
 
 One template turns Claude Code / Codex / OpenCode / Cursor into a contract-governed, multi-role development pipeline.
 
+[![CI](https://github.com/nvrenshiren/opcflow/actions/workflows/ci.yml/badge.svg)](https://github.com/nvrenshiren/opcflow/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@dawipong/opcflow)](https://www.npmjs.com/package/@dawipong/opcflow)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-339933)
-![tests](https://img.shields.io/badge/tests-89%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-156%20passing-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
 [简体中文](README.md) · **English**
@@ -29,12 +31,12 @@ contracts, thumbs-up/down outputs, and answer rulings**.
 
 - **Real relationship graph** — an artifact DAG + task foreign keys, not naming conventions
 - **Five-state trust anchors** — editing approved content auto-invalidates it, downstream auto-goes-stale (state is derived from file content; nobody has to "update the status")
-- **Five-role pipeline** — product-manager → architect → designer → developer → qa, each consuming approved upstream contracts, each with a gate
+- **Five-role pipeline (extensible)** — by default product-manager → architect → designer → developer → qa, each consuming approved upstream contracts, each with a gate; roles are a registry (`config.roles`) — adding a custom role is one config block + one template, zero engine code
 - **Change propagation** — `sync` reconciles → invalidate → dispatch review along the graph (deduped)
 - **QA loop** — fail → auto rework → auto re-verify, no human in the loop
 - **Write-gate hooks** — block agents from editing an approved contract (observe mode by default)
 - **Feedback evolution** — 👍👎 and QA verdicts, half-life weighted → candidates (AI decides skill / rule / memory) / Red Flags
-- **Multi-platform** — one definition generates each platform's agent + MCP + hooks (see [PLATFORMS.md](PLATFORMS.md))
+- **Multi-platform** — one definition generates each platform's agent + MCP + hooks; rules/memory are registered and tracked per platform convention (see [PLATFORMS.md](PLATFORMS.md))
 - **Visual opcflow** — tree + markdown/mermaid/prototype/code rendering + review-queue diff + live SSE
 
 ## Difference from GitHub Spec Kit
@@ -106,21 +108,16 @@ re-review task appears in the queue.
 
 ## Agent Authoring Flow (five-role pipeline)
 
-```mermaid
-flowchart LR
-    U(["⬜ Requirement"]) --> PM["🟦 product-manager<br/>business contracts"]
-    PM --> AR["🟦 architect<br/>DB + API contracts"]
-    AR --> DE["🟦 designer<br/>design system + prototype"]
-    DE --> DV["🟦 developer<br/>code"]
-    DV --> QA["🟦 qa<br/>acceptance"]
-    QA --> DONE(["✅ module accepted"])
-    QA -.->|"fail → rework"| DV
+```text
+requirement → product-manager → architect → designer → developer → qa → ✅ module accepted
+                                                                ↑                │
+                                                                └──── rework ────┘  (on qa fail)
 ```
 
-> 🟦 agent action · ⬜ user gate (approval / 👍) · ⚙️ engine-automatic. Every output must **pass a user
-> gate** before it becomes trusted truth for downstream. All agents share one skeleton: **claim (pass
-> the gate) → consume approved upstream → produce → register → submit/👍/accept → pass the gate →
-> complete**.
+Every output must **pass a user gate** (approval / 👍) before it becomes trusted truth for downstream.
+All agents share one skeleton: **claim (pass the gate) → consume approved upstream → produce → register
+→ submit/👍/accept → pass the gate → complete**. The pipeline above is the **default**; insert custom
+roles via `config.roles` + `config.pipeline` (see [CONFIG.en.md](CONFIG.en.md)).
 
 **The trust protocol, everywhere**: upstream `approved` = truth, use it directly (**no re-derivation, no
 re-confirming**); `draft/pending` = usable but flagged "unreviewed"; `invalidated / under re-review` =

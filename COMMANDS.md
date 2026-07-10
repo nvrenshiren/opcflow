@@ -63,7 +63,7 @@
 
 ## 服务与集成(多由平台 / git 自动调用)
 
-- **`serve`** `[--project --port=5620 --host=0.0.0.0]` —— 起可视化工作台(HTTP + SSE)。*场景:* 你审批的主界面;默认对局域网开放,团队自托管即靠它。
+- **`serve`** `[--project --port=5620 --host=0.0.0.0]` —— 起可视化工作台(HTTP + SSE)。*场景:* 你审批的主界面;默认对局域网开放,团队自托管即靠它。**默认无写鉴权**——多人 / 不可信网络下配 `config.server.authToken` 给写端点加口令(见 [CONFIG.md](CONFIG.md))。
 - **`mcp`** `[--project]` —— 起 MCP server(stdio),把 `wb_*` typed tools 暴露给 AI 平台。*场景:* 由各平台 MCP 配置自动拉起,一般不手调。
 - **`hook pre|post --platform=<id>`** —— agent 工具调用前/后 hook(写门禁 / 刷新)。*场景:* 由平台 hooks 配置自动调用。
 - **`postcommit`** —— git 提交后:scan + sync + 孤儿检测 + 导出。*场景:* 由 git post-commit hook 自动调用。

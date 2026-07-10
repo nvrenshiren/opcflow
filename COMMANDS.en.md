@@ -63,7 +63,7 @@ Every command: `opcflow <command> [args]` (after a global install; or `npx -y @d
 
 ## Service & Integration (mostly auto-invoked by platform / git)
 
-- **`serve`** `[--project --port=5620 --host=0.0.0.0]` —— start the visual workbench (HTTP + SSE). *When:* your main approval UI; open to the LAN by default, the basis for team self-hosting.
+- **`serve`** `[--project --port=5620 --host=0.0.0.0]` —— start the visual workbench (HTTP + SSE). *When:* your main approval UI; open to the LAN by default, the basis for team self-hosting. **No write auth by default** — for multi-user / untrusted networks, set `config.server.authToken` to require a token on write endpoints (see [CONFIG.en.md](CONFIG.en.md)).
 - **`mcp`** `[--project]` —— start the MCP server (stdio), exposing the `wb_*` typed tools to AI platforms. *When:* auto-launched by each platform's MCP config; rarely run by hand.
 - **`hook pre|post --platform=<id>`** —— agent pre/post tool-call hook (write gate / refresh). *When:* auto-invoked by the platform hooks config.
 - **`postcommit`** —— after a git commit: scan + sync + orphan detection + export. *When:* auto-invoked by the git post-commit hook.

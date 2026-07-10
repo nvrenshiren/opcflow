@@ -6,9 +6,11 @@
 
 一套模板,把 Claude Code / Codex / OpenCode / Cursor 变成受契约约束的多角色开发流水线。
 
+[![CI](https://github.com/nvrenshiren/opcflow/actions/workflows/ci.yml/badge.svg)](https://github.com/nvrenshiren/opcflow/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@dawipong/opcflow)](https://www.npmjs.com/package/@dawipong/opcflow)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-339933)
-![tests](https://img.shields.io/badge/tests-89%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-156%20passing-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
 **简体中文** · [English](README.en.md)
@@ -27,12 +29,12 @@
 
 - **真实关系链** —— artifact DAG + 任务外键,不是命名约定
 - **五态信任锚点** —— approved 内容被改自动失效,下游自动 stale(状态由文件内容派生,无需谁去"更新状态")
-- **五角色流水线** —— product-manager → architect → designer → developer → qa,各消费上游 approved 契约,各有 gate
+- **五角色流水线(可扩展)** —— 默认 product-manager → architect → designer → developer → qa,各消费上游 approved 契约,各有 gate;角色是注册表(`config.roles`),加自定义角色 = 一段配置 + 一份模板,零引擎代码
 - **变更传播** —— `sync` 对账 → 失效 → 沿图派 review(去重)
 - **QA 闭环** —— fail → 自动 rework → 自动复验,不消耗人
 - **写门禁 hooks** —— agent 改到已 approved 契约时拦截(默认 observe 观察期)
 - **反馈进化** —— 👍👎 与 QA verdict 半衰期加权 → 经验候选(由 AI 判断沉淀为 skill / 规则 / 记忆)/ Red Flags
-- **多平台** —— 一套定义生成四家平台各自的 agent + MCP + hooks(见 [PLATFORMS.md](PLATFORMS.md))
+- **多平台** —— 一套定义生成四家平台各自的 agent + MCP + hooks,规则/记忆按平台约定登记跟踪(见 [PLATFORMS.md](PLATFORMS.md))
 - **可视化工作台** —— 树 + markdown/mermaid/原型/代码渲染 + 待审队列 diff + SSE 实时
 
 ## 与 GitHub Spec Kit 的区别
@@ -98,20 +100,15 @@ opcflow init --platforms=claude,cursor --endpoints=service,web
 
 ## Agent 写作流程(五角色流水线)
 
-```mermaid
-flowchart LR
-    U(["⬜ 需求"]) --> PM["🟦 product-manager<br/>业务契约"]
-    PM --> AR["🟦 architect<br/>DB + API 契约"]
-    AR --> DE["🟦 designer<br/>设计系统 + 原型"]
-    DE --> DV["🟦 developer<br/>代码"]
-    DV --> QA["🟦 qa<br/>验收"]
-    QA --> DONE(["✅ 模块 accepted"])
-    QA -.->|"fail → rework"| DV
+```text
+需求 → product-manager → architect → designer → developer → qa → ✅ 模块 accepted
+                                                        ↑                │
+                                                        └──── rework ────┘（qa fail 时）
 ```
 
-> 🟦 agent 动作 · ⬜ 用户关卡(审批 / 👍) · ⚙️ 引擎自动。每一环的产出都要**过用户关卡**才成为
-> 下游可信真相。所有 agent 共用一套 **claim(过 gate)→ 消费 approved 上游 → 产出 → 登记 → 送审/👍/验收
-> → 过关卡 → complete** 的骨架。
+每一环的产出都要**过用户关卡**(审批 / 👍)才成为下游可信真相。所有 agent 共用一套
+**claim(过 gate)→ 消费 approved 上游 → 产出 → 登记 → 送审/👍/验收 → 过关卡 → complete** 的骨架;
+上面是**默认**流水线,可经 `config.roles` + `config.pipeline` 插入自定义角色(见 [CONFIG.md](CONFIG.md))。
 
 **贯穿的信任协议**:上游 `approved` = 真相直接用(**禁重新推导、禁重复确认**);`draft/pending` = 可用但
 标注"未审";`invalidated / 复审中` = **禁用**等复审;有实质异议走 `dispute` 留痕停下,不擅自偏离。

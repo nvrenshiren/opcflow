@@ -39,8 +39,14 @@ npx -y @dawipong/opcflow init \
 | **MCP** | `.mcp.json` | `.codex/config.toml` `[mcp_servers]` | `opencode.json` `mcp` | `.cursor/mcp.json` |
 | **hooks** | `.claude/settings.json` | `.codex/config.toml` `[hooks]` | `.opencode/plugins/opcflow.ts` | `.cursor/hooks.json` |
 | **模型钉在哪** | agent frontmatter | agent toml / config | agent frontmatter | subagent frontmatter |
+| **规则跟踪**(kind=rule) | 不追(载体是 CLAUDE.md,手改大文件) | 不追(载体是 AGENTS.md) | 不追(同 codex) | `.cursor/rules/` ✅ |
+| **记忆跟踪**(kind=memory) | `.claude/agent-memory/` ✅ | 不追(载体是 AGENTS.md) | 不追(同 codex) | 不追(原生 Memories,非文件) |
 
 MCP / hooks 写入均为**合并语义**:不会覆盖你已有的 server / 其它 hook,只补 `opcflow` 这一项。
+
+**规则 / 记忆跟踪**:`opcflow register-meta` 会把上表 ✅ 标注的目录下文件登记为 draft 产物(`approval:
+none`,不设审卡——平台本来就直接读取生效,opcflow 只负责登记 + 变更留痕,让它们进事件流与工作台的
+关系图)。手改的大文件(CLAUDE.md / AGENTS.md)与 Cursor 原生 Memories(非文件形态)刻意不追。
 
 ## Hooks(写门禁 + 刷新)
 
