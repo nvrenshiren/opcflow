@@ -1,4 +1,4 @@
-import { Button, Drawer, Empty, Select, Space, Tag, message } from "antd"
+import { Button, Drawer, Empty, Select, Space, Spin, Tag, message } from "antd"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Background,
@@ -85,6 +85,8 @@ function toFlow(nodes: GraphNode[], edges: GraphEdge[], highlight: string): { no
 
 export function RelationGraph({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [raw, setRaw] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] })
+  // 初始 true:首次打开抽屉即显示 loading,避免数据到达前先闪一帧"暂无产物"空态
+  const [loading, setLoading] = useState(true)
   const [moduleFilter, setModuleFilter] = useState<string | undefined>()
   const [q, setQ] = useState("")
   const [results, setResults] = useState<{ artifacts: { id: number; kind: string; path: string }[]; files: string[] }>({
@@ -96,12 +98,19 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
   const [rf, setRf] = useState<ReactFlowInstance | null>(null)
   const debounce = useRef<ReturnType<typeof setTimeout>>()
 
-  const load = useCallback(() => {
-    api.graph().then(setRaw)
+  // silent=true:SSE / 用户操作后的后台重载,不显示 loading 占位,数据到了平滑替换已显示的图
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
+    api
+      .graph()
+      .then(setRaw)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
     if (open) load()
+    else setLoading(true) // 关闭即复位:下次打开首帧直接是 loading,不闪旧图/空态
   }, [open, load])
 
   // SSE:任何事件 400ms 去抖后重载(scan/审批/建边都会产生事件)
@@ -111,7 +120,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
     let timer: ReturnType<typeof setTimeout>
     es.onmessage = () => {
       clearTimeout(timer)
-      timer = setTimeout(load, 400)
+      timer = setTimeout(() => load(true), 400)
     }
     return () => {
       clearTimeout(timer)
@@ -148,7 +157,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
         .addEdge(Number(c.source), Number(c.target))
         .then(() => {
           message.success(t("已声明手动关系(参与失效传播)", "Manual relation added (joins invalidation propagation)"))
-          load()
+          load(true)
         })
         .catch(e => message.error(String((e as Error).message ?? e)))
     },
@@ -162,7 +171,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
       .then(() => {
         message.success(t("已解绑", "Unbound"))
         setSelectedEdge(null)
-        load()
+        load(true)
       })
       .catch(e => message.error(String((e as Error).message ?? e)))
   }, [selectedEdge, load])
@@ -174,7 +183,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
       .then(() => {
         message.success(t(`已取消登记:${selectedNode.path}`, `Unregistered: ${selectedNode.path}`))
         setSelectedNode(null)
-        load()
+        load(true)
       })
       .catch(e => message.error(String((e as Error).message ?? e)))
   }, [selectedNode, load])
@@ -186,7 +195,7 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
         .then(() => {
           message.success(t(`已登记并加入图:${path}`, `Registered & added: ${path}`))
           setResults(r => ({ ...r, files: r.files.filter(x => x !== path) }))
-          load()
+          load(true)
         })
         .catch(e => message.error(String((e as Error).message ?? e)))
     },
@@ -279,7 +288,22 @@ export function RelationGraph({ open, onClose }: { open: boolean; onClose: () =>
           borderRadius: 10
         }}
       >
-        {flow.nodes.length === 0 ? (
+        {loading ? (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 14,
+              color: "rgba(128,128,128,0.9)"
+            }}
+          >
+            <Spin size="large" />
+            <span style={{ fontFamily: MONO, fontSize: 12 }}>{t("正在加载关系图…", "Loading relation graph…")}</span>
+          </div>
+        ) : flow.nodes.length === 0 ? (
           <Empty style={{ paddingTop: 80 }} description={t("暂无产物(先 scan)", "No artifacts yet (run scan)")} />
         ) : (
           <ReactFlow
