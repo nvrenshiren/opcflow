@@ -1,3 +1,11 @@
+## [0.11.1](https://github.com/nvrenshiren/opcflow/compare/v0.11.0...v0.11.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* developer common 端豁免设计稿前置(纯计算共享包无 UI) ([502beec](https://github.com/nvrenshiren/opcflow/commit/502beeca9d0217412db3639e68c22c31269d402b))
+* 人审不外包补漏——引擎拒绝以流水线角色审批,封死 agent 自写自审 ([45ddeb5](https://github.com/nvrenshiren/opcflow/commit/45ddeb58d95b22febddf949d3f7aac22bf5396c8))
+
 # [0.11.0](https://github.com/nvrenshiren/opcflow/compare/v0.10.3...v0.11.0) (2026-07-11)
 
 
